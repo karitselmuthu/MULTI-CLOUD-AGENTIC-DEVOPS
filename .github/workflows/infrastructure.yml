@@ -1,0 +1,38 @@
+# Sources: https://github.com/hashicorp/setup-terraform
+#          https://developer.hashicorp.com/terraform/cli/commands/validate
+name: Infrastructure checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        module: [aws, azure]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.15.6"
+      - run: terraform fmt -check -recursive infrastructure
+      - run: terraform init -backend=false -input=false
+        working-directory: infrastructure/modules/${{ matrix.module }}
+      - run: terraform validate -no-color
+        working-directory: infrastructure/modules/${{ matrix.module }}
+
+  policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: open-policy-agent/setup-opa@v2
+        with:
+          version: "1.22.2"
+      - run: opa test infrastructure/policies -v
