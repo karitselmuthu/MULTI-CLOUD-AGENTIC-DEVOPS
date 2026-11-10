@@ -9,7 +9,7 @@ import os
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mock_plan
+from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mock_plan, verify_mock_approval
 from orchestration.temporal.workflows.request import RequestWorkflow
 from apps.api.database import make_session_factory
 from orchestration.temporal.dispatch import TASK_QUEUE, dispatch_once
@@ -23,7 +23,7 @@ async def main() -> None:
         client,
         task_queue=TASK_QUEUE,
         workflows=[RequestWorkflow],
-        activities=[prepare_mock_plan, execute_mock_plan],
+        activities=[prepare_mock_plan, verify_mock_approval, execute_mock_plan],
     )
     async with worker:
         while True:

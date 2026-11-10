@@ -65,11 +65,18 @@ class RequestCreate(BaseModel):
 
 class WorkflowResponse(BaseModel):
     id: UUID
-    status: Literal["received", "queued"]
+    status: Literal["received", "queued", "planning", "awaiting_approval", "executing", "completed", "approval_expired"]
     cloud: Cloud
     environment: Environment
     created_at: datetime
     request_digest: str
+    plan_digest: str | None = None
+
+
+class ApprovalSubmission(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    signed_approval: str = Field(min_length=1, max_length=4096)
 
 
 class HealthResponse(BaseModel):

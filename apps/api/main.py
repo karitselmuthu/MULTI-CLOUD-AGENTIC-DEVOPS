@@ -5,29 +5,45 @@ Sources: https://fastapi.tiangolo.com/tutorial/body/
 """
 
 import hashlib
+import os
 from datetime import timezone
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Header, HTTPException
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
+from temporalio.client import Client
 
-from .contracts import HealthResponse, RequestCreate, WorkflowResponse
+from .contracts import ApprovalSubmission, HealthResponse, RequestCreate, WorkflowResponse
 from .database import AuditEvent, WorkflowRecord, make_session_factory, utc_now
+from gateways.mcp.gateway import ToolContext, approval_matches
+from orchestration.temporal.workflows.request import RequestWorkflow
+from security.identity.tokens import ApprovalClaims, TokenVerifier
 
 
-def create_app(session_factory=None) -> FastAPI:
+def create_app(session_factory=None, temporal_client=None) -> FastAPI:
     sessions = session_factory or make_session_factory()
     app = FastAPI(title="Enterprise Multi-Cloud Agentic DevOps", version="0.1.0")
 
-    def response_for(row: WorkflowRecord) -> WorkflowResponse:
+    async def get_temporal():
+        if temporal_client is not None:
+            return temporal_client
+        address = os.environ.get("TEMPORAL_ADDRESS")
+        if not address:
+            raise HTTPException(status_code=503, detail="Temporal is not configured")
+        try:
+            return await Client.connect(address)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="Temporal unavailable") from exc
+
+    def response_for(row: WorkflowRecord, status: str | None = None, plan_digest: str | None = None) -> WorkflowResponse:
         created_at = row.created_at
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=timezone.utc)
         return WorkflowResponse(
-            id=UUID(row.id), status=row.status, cloud=row.cloud,
+            id=UUID(row.id), status=status or row.status, cloud=row.cloud,
             environment=row.environment, created_at=created_at,
-            request_digest=row.request_digest,
+            request_digest=row.request_digest, plan_digest=plan_digest,
         )
 
     @app.get("/health", response_model=HealthResponse)
@@ -75,12 +91,55 @@ def create_app(session_factory=None) -> FastAPI:
             return response_for(row)
 
     @app.get("/workflows/{workflow_id}", response_model=WorkflowResponse)
-    def get_workflow(workflow_id: UUID) -> WorkflowResponse:
+    async def get_workflow(workflow_id: UUID) -> WorkflowResponse:
         with sessions() as session:
             row = session.get(WorkflowRecord, str(workflow_id))
             if row is None:
                 raise HTTPException(status_code=404, detail="workflow not found")
-            return response_for(row)
+            if row.status != "queued" or (temporal_client is None and not os.environ.get("TEMPORAL_ADDRESS")):
+                return response_for(row)
+            response_row = row
+        client = await get_temporal()
+        handle = client.get_workflow_handle(str(workflow_id))
+        try:
+            status = await handle.query(RequestWorkflow.get_status)
+            plan = await handle.query(RequestWorkflow.get_plan)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="workflow state unavailable") from exc
+        return response_for(response_row, status=status, plan_digest=plan.digest if plan else None)
+
+    @app.post("/workflows/{workflow_id}/approve", status_code=202)
+    async def approve_workflow(workflow_id: UUID, submission: ApprovalSubmission) -> dict[str, str]:
+        with sessions() as session:
+            row = session.get(WorkflowRecord, str(workflow_id))
+            if row is None:
+                raise HTTPException(status_code=404, detail="workflow not found")
+            request = RequestCreate.model_validate_json(row.request_json)
+        client = await get_temporal()
+        handle = client.get_workflow_handle(str(workflow_id))
+        try:
+            status = await handle.query(RequestWorkflow.get_status)
+            plan = await handle.query(RequestWorkflow.get_plan)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="workflow state unavailable") from exc
+        if status != "awaiting_approval" or plan is None:
+            raise HTTPException(status_code=409, detail="workflow is not awaiting approval")
+        try:
+            verifier = TokenVerifier(os.environ.get("AGENT_SIGNING_KEY", "").encode())
+            approval = verifier.verify(submission.signed_approval, ApprovalClaims)
+        except (ValueError, PermissionError) as exc:
+            raise HTTPException(status_code=403, detail="invalid approval") from exc
+        context = ToolContext(
+            workflow_id=str(workflow_id), plan_digest=plan.digest,
+            environment=request.environment.value, requester=request.requester,
+            change_record=request.approval.change_record,
+        )
+        if not approval_matches(approval, context):
+            raise HTTPException(status_code=403, detail="approval does not match plan")
+        await handle.signal(RequestWorkflow.approve, submission.signed_approval)
+        with sessions() as session, session.begin():
+            session.add(AuditEvent(workflow_id=str(workflow_id), event_type="approval.signaled", created_at=utc_now()))
+        return {"status": "approval_signaled"}
 
     return app
 

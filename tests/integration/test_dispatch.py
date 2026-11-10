@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -10,13 +11,16 @@ from temporalio.worker import Worker
 
 from apps.api.database import AuditEvent, Base, WorkflowRecord, utc_now
 from orchestration.state.contracts import WorkflowInput
-from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mock_plan
+from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mock_plan, verify_mock_approval
 from orchestration.temporal.dispatch import TASK_QUEUE, dispatch_once
 from orchestration.temporal.workflows.request import RequestWorkflow
+from security.identity.tokens import ApprovalClaims, TokenVerifier
 
 
 @pytest.mark.asyncio
-async def test_dispatch_retries_after_start_before_database_commit(tmp_path):
+async def test_dispatch_retries_after_start_before_database_commit(tmp_path, monkeypatch):
+    secret = "local-test-signing-key-with-32-plus-bytes"
+    monkeypatch.setenv("AGENT_SIGNING_KEY", secret)
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'dispatch.db'}")
     Base.metadata.create_all(engine)
     sessions = sessionmaker(engine, expire_on_commit=False)
@@ -38,7 +42,7 @@ async def test_dispatch_retries_after_start_before_database_commit(tmp_path):
     async with await WorkflowEnvironment.start_local() as env:
         async with Worker(
             env.client, task_queue=TASK_QUEUE, workflows=[RequestWorkflow],
-            activities=[prepare_mock_plan, execute_mock_plan],
+            activities=[prepare_mock_plan, verify_mock_approval, execute_mock_plan],
         ):
             # Simulate a crash after Temporal accepts the start and before the DB updates.
             handle = await env.client.start_workflow(
@@ -58,6 +62,12 @@ async def test_dispatch_retries_after_start_before_database_commit(tmp_path):
                 if plan:
                     break
             assert plan is not None
-            await handle.signal(RequestWorkflow.approve, plan.digest)
+            token = TokenVerifier(secret.encode()).sign(ApprovalClaims(
+                workflow_id=workflow_id, plan_digest=plan.digest,
+                environment="sandbox", requester="engineer@example.com",
+                approver="reviewer@example.com",
+                expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+            ))
+            await handle.signal(RequestWorkflow.approve, token)
             assert (await handle.result()).startswith("simulated:")
     engine.dispose()

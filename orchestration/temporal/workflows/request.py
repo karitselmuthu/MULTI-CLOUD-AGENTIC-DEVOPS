@@ -11,8 +11,8 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
-    from orchestration.state.contracts import MockPlan, WorkflowInput
-    from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mock_plan
+    from orchestration.state.contracts import ApprovalCheck, MockPlan, WorkflowInput
+    from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mock_plan, verify_mock_approval
 
 
 @workflow.defn
@@ -20,7 +20,7 @@ class RequestWorkflow:
     def __init__(self) -> None:
         self.status = "received"
         self.plan: MockPlan | None = None
-        self.approval_digest: str | None = None
+        self.approval_tokens: list[str] = []
 
     @workflow.run
     async def run(self, value: WorkflowInput) -> str:
@@ -33,18 +33,31 @@ class RequestWorkflow:
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
         self.status = "awaiting_approval"
-        try:
-            await workflow.wait_condition(
-                lambda: self.approval_digest == self.plan.digest,
-                timeout=timedelta(hours=24),
-            )
-        except TimeoutError:
-            self.status = "approval_expired"
-            return self.status
+        deadline = workflow.now() + timedelta(hours=24)
+        while True:
+            remaining = deadline - workflow.now()
+            if remaining <= timedelta():
+                self.status = "approval_expired"
+                return self.status
+            try:
+                await workflow.wait_condition(
+                    lambda: bool(self.approval_tokens),
+                    timeout=remaining,
+                )
+            except TimeoutError:
+                self.status = "approval_expired"
+                return self.status
+            approval = ApprovalCheck(self.plan, value.request_json, self.approval_tokens.pop(0))
+            if await workflow.execute_activity(
+                verify_mock_approval, approval,
+                start_to_close_timeout=timedelta(seconds=10),
+                retry_policy=RetryPolicy(maximum_attempts=3),
+            ):
+                break
         self.status = "executing"
         result = await workflow.execute_activity(
             execute_mock_plan,
-            self.plan,
+            approval,
             start_to_close_timeout=timedelta(seconds=30),
             schedule_to_close_timeout=timedelta(minutes=2),
             retry_policy=RetryPolicy(maximum_attempts=3),
@@ -53,8 +66,8 @@ class RequestWorkflow:
         return result
 
     @workflow.signal
-    def approve(self, digest: str) -> None:
-        self.approval_digest = digest
+    def approve(self, signed_approval: str) -> None:
+        self.approval_tokens.append(signed_approval)
 
     @workflow.query
     def get_status(self) -> str:

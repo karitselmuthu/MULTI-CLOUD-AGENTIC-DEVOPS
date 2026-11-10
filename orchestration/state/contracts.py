@@ -16,3 +16,10 @@ class MockPlan:
     environment: str
     application: str
     digest: str
+
+
+@dataclass
+class ApprovalCheck:
+    plan: MockPlan
+    request_json: str
+    approval_token: str

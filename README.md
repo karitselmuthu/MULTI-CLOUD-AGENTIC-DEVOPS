@@ -4,7 +4,7 @@ Production-oriented Agentic DevOps platform for governed infrastructure and appl
 
 ## Current state
 
-Week 1 intake foundation, a Week 2 Temporal mock orchestration slice, and Week 3 mock LangGraph planning: validated requests, persistent workflow records, audit metadata, and a worker that dispatches accepted requests to durable mock workflows. No cloud mutation is implemented.
+Stage A local foundation: validated requests, persistent workflow records, durable Temporal mock workflows, LangGraph planning, signed approval binding, and an OPA-gated mock tool gateway. No cloud mutation is implemented.
 
 The repository follows the proposed domain layout. Directories without implemented workstreams contain `.gitkeep` placeholders so Git retains the full structure. The [cloud capability matrix](cloud/capability_matrix.yaml) records planned AWS and Azure mappings; it does not imply active integrations.
 
@@ -31,6 +31,8 @@ curl -X POST http://localhost:8000/requests \
 
 Run tests with `.venv/bin/pytest`. See [Week 1 specification](docs/roadmap/week-01-spec.md) and [ADR 0001](docs/adr/0001-persistent-intake-before-orchestration.md).
 
-For Week 2 development, start a Temporal dev server on `localhost:7233`, then run `.venv/bin/python -m orchestration.temporal.workers.mock_worker` in a separate terminal. The worker polls `received` rows and starts mock workflows. Approval signals are available through the Temporal SDK for integration testing; no user approval endpoint is exposed yet. See [Week 2 specification](docs/roadmap/week-02-spec.md) and [ADR 0002](docs/adr/0002-temporal-dispatch-and-mock-boundary.md).
+For local development, start a Temporal dev server on `localhost:7233`, set `TEMPORAL_ADDRESS=localhost:7233` for the API, then run `.venv/bin/python -m orchestration.temporal.workers.mock_worker` in a separate terminal. The worker polls `received` rows and starts mock workflows. See [Week 2 specification](docs/roadmap/week-02-spec.md) and [ADR 0002](docs/adr/0002-temporal-dispatch-and-mock-boundary.md).
 
 The planning activity uses an offline LangGraph graph and a mock module catalog. Golden requests and expected plan fields live under `evaluations/`. See [Week 3 specification](docs/roadmap/week-03-spec.md) and [ADR 0003](docs/adr/0003-langgraph-inside-planning-activity.md).
+
+For mock approvals, set a unique 32-byte or longer `AGENT_SIGNING_KEY` in both API and worker processes and install the [OPA CLI](https://www.openpolicyagent.org/docs). The API exposes `POST /workflows/{id}/approve` for signed approval claims; it does not issue claims or authenticate approvers. This interface is for isolated local development only. See [Week 4 specification](docs/roadmap/week-04-spec.md) and [Stage A verification](docs/roadmap/stage-a-verification.md).

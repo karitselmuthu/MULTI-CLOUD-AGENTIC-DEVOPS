@@ -1,0 +1,45 @@
+# Sources: https://docs.astral.sh/uv/guides/integration/github/
+#          https://docs.github.com/en/actions/tutorials/use-containerized-services/create-postgresql-service-containers
+#          https://github.com/open-policy-agent/setup-opa/blob/main/README.md
+name: Stage A checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: devops
+          POSTGRES_USER: devops
+          POSTGRES_PASSWORD: devops
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U devops -d devops"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://devops:devops@localhost:5432/devops
+      OPA_BIN: opa
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.13.7"
+      - run: uv python install
+      - uses: open-policy-agent/setup-opa@v2
+        with:
+          version: "1.22.2"
+      - run: uv sync --locked --extra test
+      - run: opa test security/opa -v
+      - run: uv run --locked --extra test pytest -q tests
