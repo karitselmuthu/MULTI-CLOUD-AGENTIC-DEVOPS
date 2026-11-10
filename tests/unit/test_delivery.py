@@ -19,12 +19,13 @@ def check():
 
 def test_mock_delivery_healthy_and_rollback():
     value = check()
-    healthy = simulate_delivery(value)
+    healthy = simulate_delivery(value, admission=lambda _: True)
     assert healthy.workflow_id == "w1"
     assert healthy.plan_digest == "a" * 64
     assert healthy.ci_passed and healthy.security_passed
+    assert healthy.supply_chain_passed
     assert healthy.deployment_status == "healthy"
-    rollback = simulate_delivery(value, healthy=False)
+    rollback = simulate_delivery(value, healthy=False, admission=lambda _: True)
     assert rollback.deployment_status == "rolled_back"
     assert rollback.deployment_revision == "previous"
 
@@ -44,6 +45,11 @@ def test_blocking_scan_prevents_pull_request_and_deployment():
 def test_invalid_generated_source_cannot_deploy():
     with pytest.raises(SyntaxError):
         simulate_delivery(check(), content="def broken(:\n")
+
+
+def test_admission_rejection_prevents_deployment():
+    with pytest.raises(PermissionError, match="admission denied"):
+        simulate_delivery(check(), admission=lambda _: False)
 
 
 @pytest.mark.parametrize("marker,tool", [

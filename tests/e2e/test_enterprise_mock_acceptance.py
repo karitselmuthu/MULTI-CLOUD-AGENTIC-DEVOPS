@@ -50,19 +50,21 @@ def test_cross_cloud_governed_mock_release(cloud, region):
     )
     assert tacos.apply(workflow_id, approval, workload).status == "applied"
 
-    report = simulate_delivery(ApprovalCheck(plan, json.dumps(request), approval))
-    assert report.deployment_status == "healthy"
-    assert report.security_passed and report.ci_passed
-
     attestor = MockAttestor(b"local-test-attestation-key-with-32-bytes")
     materials = b"mock-bill-of-materials"
-    provenance = attestor.attest(
-        tenant="team-a", workflow_id=workflow_id, plan_digest=plan.digest,
-        source_digest=report.commit_digest, image_digest=report.commit_digest,
-        materials=materials,
-    )
-    assert attestor.admit(
-        provenance, tenant="team-a", workflow_id=workflow_id,
-        plan_digest=plan.digest, image_digest=report.commit_digest,
-        materials=materials,
-    )
+
+    def admit(commit_digest: str) -> bool:
+        provenance = attestor.attest(
+            tenant="team-a", workflow_id=workflow_id, plan_digest=plan.digest,
+            source_digest=commit_digest, image_digest=commit_digest,
+            materials=materials,
+        )
+        return attestor.admit(
+            provenance, tenant="team-a", workflow_id=workflow_id,
+            plan_digest=plan.digest, image_digest=commit_digest,
+            materials=materials,
+        )
+
+    report = simulate_delivery(ApprovalCheck(plan, json.dumps(request), approval), admission=admit)
+    assert report.deployment_status == "healthy"
+    assert report.security_passed and report.ci_passed and report.supply_chain_passed

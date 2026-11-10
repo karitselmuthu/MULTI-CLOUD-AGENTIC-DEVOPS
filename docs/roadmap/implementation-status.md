@@ -16,7 +16,7 @@ This table measures **local code and mock acceptance**, not production readiness
 | 10 | End-to-end MVP | Approved Temporal mock path and report | Live request-to-deployment acceptance |
 | 11 | TACOS | In-memory run, locking, budget and drift checks | HCP Terraform/Spacelift/env0 adapter and remote state |
 | 12 | Advanced identity | Five-minute tenant-scoped mock workload token | Cloud workload identity, secret broker and tenant auth |
-| 13 | Supply chain | HMAC mock provenance and admission check | Syft SBOM, cosign, provenance and cluster admission |
+| 13 | Supply chain | HMAC mock provenance gate before mock rollout | Syft SBOM, cosign, provenance and cluster admission |
 | 14 | Agent evaluation | Golden and adversarial mock tests | Measured plan/tool accuracy and model regression gate |
 | 15 | Observability | In-memory trace/incident contract | OTel export, Langfuse, dashboards and alerts |
 | 16 | Resilience | Mock canary rollback and evidence digest | Live failure recovery, DR and blast-radius exercise |

@@ -12,6 +12,7 @@ class DeliveryReport:
     commit_digest: str
     ci_passed: bool
     security_passed: bool
+    supply_chain_passed: bool
     deployment_status: str
     deployment_revision: str
 

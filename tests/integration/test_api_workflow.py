@@ -75,6 +75,7 @@ async def test_api_request_to_signed_mock_approval(tmp_path, monkeypatch):
                 report = await http.get(f"/workflows/{workflow_id}/report")
                 assert report.status_code == 200
                 assert report.json()["deployment_status"] == "healthy"
+                assert report.json()["supply_chain_passed"] is True
                 with sessions() as session:
                     assert [event.event_type for event in session.scalars(select(AuditEvent)).all()] == [
                         "request.received", "workflow.dispatched", "approval.signaled"
