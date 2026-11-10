@@ -65,7 +65,7 @@ class RequestCreate(BaseModel):
 
 class WorkflowResponse(BaseModel):
     id: UUID
-    status: Literal["received"]
+    status: Literal["received", "queued"]
     cloud: Cloud
     environment: Environment
     created_at: datetime
