@@ -15,6 +15,7 @@ from temporalio.worker import Worker
 from apps.api.database import AuditEvent, Base
 from apps.api.main import create_app
 from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mock_plan, verify_mock_approval
+from orchestration.temporal.activities.delivery import deliver_mock_plan
 from orchestration.temporal.dispatch import TASK_QUEUE, dispatch_once
 from orchestration.temporal.workflows.request import RequestWorkflow
 from security.identity.tokens import ApprovalClaims, TokenVerifier
@@ -39,7 +40,7 @@ async def test_api_request_to_signed_mock_approval(tmp_path, monkeypatch):
     async with await WorkflowEnvironment.start_local() as env:
         async with Worker(
             env.client, task_queue=TASK_QUEUE, workflows=[RequestWorkflow],
-            activities=[prepare_mock_plan, verify_mock_approval, execute_mock_plan],
+            activities=[prepare_mock_plan, verify_mock_approval, execute_mock_plan, deliver_mock_plan],
         ):
             transport = httpx.ASGITransport(app=create_app(sessions, env.client))
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
@@ -71,6 +72,9 @@ async def test_api_request_to_signed_mock_approval(tmp_path, monkeypatch):
                 handle = env.client.get_workflow_handle(workflow_id)
                 assert (await handle.result()).startswith("simulated:")
                 assert (await http.get(f"/workflows/{workflow_id}")).json()["status"] == "completed"
+                report = await http.get(f"/workflows/{workflow_id}/report")
+                assert report.status_code == 200
+                assert report.json()["deployment_status"] == "healthy"
                 with sessions() as session:
                     assert [event.event_type for event in session.scalars(select(AuditEvent)).all()] == [
                         "request.received", "workflow.dispatched", "approval.signaled"

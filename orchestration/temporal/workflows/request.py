@@ -12,6 +12,8 @@ from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
     from orchestration.state.contracts import ApprovalCheck, MockPlan, WorkflowInput
+    from orchestration.state.delivery import DeliveryReport
+    from orchestration.temporal.activities.delivery import deliver_mock_plan
     from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mock_plan, verify_mock_approval
 
 
@@ -20,6 +22,7 @@ class RequestWorkflow:
     def __init__(self) -> None:
         self.status = "received"
         self.plan: MockPlan | None = None
+        self.report: DeliveryReport | None = None
         self.approval_tokens: list[str] = []
 
     @workflow.run
@@ -62,6 +65,14 @@ class RequestWorkflow:
             schedule_to_close_timeout=timedelta(minutes=2),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
+        self.status = "delivering"
+        self.report = await workflow.execute_activity(
+            deliver_mock_plan,
+            approval,
+            start_to_close_timeout=timedelta(seconds=30),
+            schedule_to_close_timeout=timedelta(minutes=2),
+            retry_policy=RetryPolicy(maximum_attempts=3),
+        )
         self.status = "completed"
         return result
 
@@ -76,3 +87,7 @@ class RequestWorkflow:
     @workflow.query
     def get_plan(self) -> MockPlan | None:
         return self.plan
+
+    @workflow.query
+    def get_report(self) -> DeliveryReport | None:
+        return self.report

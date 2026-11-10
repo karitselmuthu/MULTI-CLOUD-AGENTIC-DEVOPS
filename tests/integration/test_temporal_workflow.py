@@ -12,6 +12,7 @@ from temporalio.client import WorkflowFailureError
 
 from orchestration.state.contracts import WorkflowInput
 from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mock_plan, verify_mock_approval
+from orchestration.temporal.activities.delivery import deliver_mock_plan
 from orchestration.temporal.workflows.request import RequestWorkflow
 from apps.api.contracts import RequestCreate
 from security.identity.tokens import ApprovalClaims, TokenVerifier
@@ -64,7 +65,7 @@ async def test_approval_digest_and_worker_restart():
     async with await WorkflowEnvironment.start_local() as env:
         async with Worker(
             env.client, task_queue=queue, workflows=[RequestWorkflow],
-            activities=[prepare_mock_plan, verify_mock_approval, execute_mock_plan],
+            activities=[prepare_mock_plan, verify_mock_approval, execute_mock_plan, deliver_mock_plan],
         ):
             handle = await env.client.start_workflow(RequestWorkflow.run, value, id=workflow_id, task_queue=queue)
             await wait_for_status(handle, "awaiting_approval")
@@ -74,11 +75,15 @@ async def test_approval_digest_and_worker_restart():
 
         async with Worker(
             env.client, task_queue=queue, workflows=[RequestWorkflow],
-            activities=[prepare_mock_plan, verify_mock_approval, execute_mock_plan],
+            activities=[prepare_mock_plan, verify_mock_approval, execute_mock_plan, deliver_mock_plan],
         ):
             await handle.signal(RequestWorkflow.approve, approval_token(plan, value.request_json))
             assert await handle.result() == f"simulated:{workflow_id}:{plan.digest}"
             assert await handle.query(RequestWorkflow.get_status) == "completed"
+            report = await handle.query(RequestWorkflow.get_report)
+            assert report.plan_digest == plan.digest
+            assert report.pull_request.startswith("mock://")
+            assert report.deployment_status == "healthy"
 
 
 @pytest.mark.asyncio
@@ -92,7 +97,7 @@ async def test_approval_timeout_without_execution():
     async with await WorkflowEnvironment.start_time_skipping() as env:
         async with Worker(
             env.client, task_queue=queue, workflows=[RequestWorkflow],
-            activities=[prepare_mock_plan, verify_mock_approval, execute_mock_plan],
+            activities=[prepare_mock_plan, verify_mock_approval, execute_mock_plan, deliver_mock_plan],
         ):
             handle = await env.client.start_workflow(RequestWorkflow.run, value, id=workflow_id, task_queue=queue)
             assert await handle.result() == "approval_expired"
@@ -114,7 +119,7 @@ async def test_activity_retry_and_cancellation():
     async with await WorkflowEnvironment.start_time_skipping() as env:
         async with Worker(
             env.client, task_queue=queue, workflows=[RequestWorkflow],
-            activities=[flaky_plan, verify_mock_approval, execute_mock_plan],
+            activities=[flaky_plan, verify_mock_approval, execute_mock_plan, deliver_mock_plan],
         ):
             workflow_id = str(uuid4())
             value = WorkflowInput(

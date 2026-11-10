@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fastapi-service
+description: Example sandbox API deployed by the governed workflow
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

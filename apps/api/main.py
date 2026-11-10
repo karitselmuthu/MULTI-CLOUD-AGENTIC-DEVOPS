@@ -17,6 +17,7 @@ from temporalio.client import Client
 from .contracts import ApprovalSubmission, HealthResponse, RequestCreate, WorkflowResponse
 from .database import AuditEvent, WorkflowRecord, make_session_factory, utc_now
 from gateways.mcp.gateway import ToolContext, approval_matches
+from orchestration.state.delivery import DeliveryReport
 from orchestration.temporal.workflows.request import RequestWorkflow
 from security.identity.tokens import ApprovalClaims, TokenVerifier
 
@@ -140,6 +141,24 @@ def create_app(session_factory=None, temporal_client=None) -> FastAPI:
         with sessions() as session, session.begin():
             session.add(AuditEvent(workflow_id=str(workflow_id), event_type="approval.signaled", created_at=utc_now()))
         return {"status": "approval_signaled"}
+
+    @app.get("/workflows/{workflow_id}/report", response_model=DeliveryReport)
+    async def get_report(workflow_id: UUID) -> DeliveryReport:
+        with sessions() as session:
+            row = session.get(WorkflowRecord, str(workflow_id))
+            if row is None:
+                raise HTTPException(status_code=404, detail="workflow not found")
+            if row.status != "queued":
+                raise HTTPException(status_code=409, detail="workflow has not started")
+        client = await get_temporal()
+        handle = client.get_workflow_handle(str(workflow_id))
+        try:
+            report = await handle.query(RequestWorkflow.get_report)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="workflow report unavailable") from exc
+        if report is None:
+            raise HTTPException(status_code=409, detail="delivery has not completed")
+        return report
 
     return app
 

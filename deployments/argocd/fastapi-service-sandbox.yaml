@@ -1,0 +1,18 @@
+# Argo CD Application spec: https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fastapi-service-sandbox
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/karitselmuthu/MULTI-CLOUD-AGENTIC-DEVOPS.git
+    targetRevision: main
+    path: deployments/helm/fastapi-service
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sandbox
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false

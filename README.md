@@ -4,7 +4,7 @@ Production-oriented Agentic DevOps platform for governed infrastructure and appl
 
 ## Current state
 
-Stage A local foundation: validated requests, persistent workflow records, durable Temporal mock workflows, LangGraph planning, signed approval binding, and an OPA-gated mock tool gateway. No cloud mutation is implemented.
+Stage A local foundation: validated requests, persistent workflow records, durable Temporal mock workflows, LangGraph planning, signed approval binding, and an OPA-gated mock tool gateway. Stage B adds locally validated AWS and Azure Terraform sandbox modules, a prototype plan policy, and a mock delivery report. No cloud or external system mutation is implemented.
 
 The repository follows the proposed domain layout. Directories without implemented workstreams contain `.gitkeep` placeholders so Git retains the full structure. The [cloud capability matrix](cloud/capability_matrix.yaml) records planned AWS and Azure mappings; it does not imply active integrations.
 
@@ -36,3 +36,5 @@ For local development, start a Temporal dev server on `localhost:7233`, set `TEM
 The planning activity uses an offline LangGraph graph and a mock module catalog. Golden requests and expected plan fields live under `evaluations/`. See [Week 3 specification](docs/roadmap/week-03-spec.md) and [ADR 0003](docs/adr/0003-langgraph-inside-planning-activity.md).
 
 For mock approvals, set a unique 32-byte or longer `AGENT_SIGNING_KEY` in both API and worker processes and install the [OPA CLI](https://www.openpolicyagent.org/docs). The API exposes `POST /workflows/{id}/approve` for signed approval claims; it does not issue claims or authenticate approvers. This interface is for isolated local development only. See [Week 4 specification](docs/roadmap/week-04-spec.md) and [Stage A verification](docs/roadmap/stage-a-verification.md).
+
+After a mock workflow completes, `GET /workflows/{id}/report` returns branch, pull request, CI, security, and deployment simulation evidence. See [Stage B infrastructure](docs/roadmap/stage-b-infrastructure.md) and [Stage B delivery](docs/roadmap/stage-b-delivery.md). The Terraform modules and Helm chart are validated locally only; the plan policy is not connected to a real executor.
