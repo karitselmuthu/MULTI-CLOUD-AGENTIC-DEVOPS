@@ -41,9 +41,13 @@ def test_cross_tenant_and_wrong_digest_denied():
     tacos.plan(run(workspace))
     with pytest.raises(PermissionError, match="workload scope"):
         tacos.apply("w1", approval, wrong_tenant)
+    assert tacos.get_run("w1").status == "planned"
+    assert tacos.spent(workspace) == 0
     _, wrong_approval, _ = tokens(plan_digest="b" * 64)
     with pytest.raises(PermissionError, match="approval does not match"):
         tacos.apply("w1", wrong_approval, tokens()[2])
+    assert tacos.get_run("w1").status == "planned"
+    assert tacos.spent(workspace) == 0
 
 
 def test_budget_and_drift_block_apply():

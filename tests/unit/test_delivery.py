@@ -22,6 +22,7 @@ def test_mock_delivery_healthy_and_rollback():
     healthy = simulate_delivery(value, admission=lambda _: True)
     assert healthy.workflow_id == "w1"
     assert healthy.plan_digest == "a" * 64
+    assert healthy.image_ref.endswith(f"@sha256:{healthy.commit_digest}")
     assert healthy.ci_passed and healthy.security_passed
     assert healthy.supply_chain_passed
     assert healthy.deployment_status == "healthy"

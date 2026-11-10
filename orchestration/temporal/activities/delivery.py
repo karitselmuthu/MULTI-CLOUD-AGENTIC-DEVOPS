@@ -41,6 +41,7 @@ def simulate_delivery(value: ApprovalCheck, *, content: str | None = None, healt
         branch=pr.branch,
         pull_request=pr.url,
         commit_digest=pr.commit_digest,
+        image_ref=f"mock.registry.invalid/{request.cloud.value}/{request.application.name}@sha256:{pr.commit_digest}",
         ci_passed=True,
         security_passed=True,
         supply_chain_passed=True,

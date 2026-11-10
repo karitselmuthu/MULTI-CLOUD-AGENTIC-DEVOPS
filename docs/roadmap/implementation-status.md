@@ -12,14 +12,14 @@ This table measures **local code and mock acceptance**, not production readiness
 | 6 | Azure infrastructure | Resource group, VNet, subnet, ACR module validates | Azure subscription, actual plan, policy, apply |
 | 7 | Repository automation | Memory-only branch/PR contract and source digest | GitHub/Azure DevOps write adapter and CI status |
 | 8 | Security automation | Four marker scanners and SARIF shape | Real Semgrep, Trivy, Checkov, gitleaks and upload |
-| 9 | Deployment | Helm chart lints/renders; Argo CD spec; mock GitOps | EKS/AKS, private registry, real rollout and rollback |
+| 9 | Deployment | Helm chart lints/renders; Argo CD spec; digest-pinned mock image and GitOps report | EKS/AKS, private registry, real rollout and rollback |
 | 10 | End-to-end MVP | Approved Temporal mock path and report | Live request-to-deployment acceptance |
 | 11 | TACOS | In-memory run, locking, budget and drift checks | HCP Terraform/Spacelift/env0 adapter and remote state |
 | 12 | Advanced identity | Five-minute tenant-scoped mock workload token | Cloud workload identity, secret broker and tenant auth |
 | 13 | Supply chain | HMAC mock provenance gate before mock rollout | Syft SBOM, cosign, provenance and cluster admission |
 | 14 | Agent evaluation | Golden and adversarial mock tests | Measured plan/tool accuracy and model regression gate |
 | 15 | Observability | In-memory trace/incident contract | OTel export, Langfuse, dashboards and alerts |
-| 16 | Resilience | Mock canary rollback and evidence digest | Live failure recovery, DR and blast-radius exercise |
+| 16 | Resilience | Mock canary rollback, audit hash chain, and file restore | Live failure recovery, DR and blast-radius exercise |
 | 17 | ITSM | In-memory change, plan hash and CAB evidence | ServiceNow/Jira callback and authenticated approval |
 | 18 | Developer portal | Backstage catalog and request template examples | Running portal, authenticated request and status UI |
 | 19 | Multi-tenant operations | Namespace/budget policy registry and TACOS tenant checks | Real namespaces, quotas, policy bundles and Day-2 controls |

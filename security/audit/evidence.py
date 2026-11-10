@@ -10,15 +10,23 @@ class EvidenceBundle:
     workflow_id: str
     tenant: str
     events: tuple[str, ...]
+    event_hashes: tuple[str, ...]
     digest: str
 
     @classmethod
     def create(cls, workflow_id: str, tenant: str, events: tuple[str, ...]):
         if not workflow_id or not tenant or not events:
             raise ValueError("evidence context and events are required")
-        payload = json.dumps({"workflow_id": workflow_id, "tenant": tenant,
-                              "events": events}, sort_keys=True, separators=(",", ":"))
-        return cls(workflow_id, tenant, events, hashlib.sha256(payload.encode()).hexdigest())
+        seed = json.dumps({"workflow_id": workflow_id, "tenant": tenant},
+                          sort_keys=True, separators=(",", ":"))
+        previous = hashlib.sha256(seed.encode()).hexdigest()
+        hashes: list[str] = []
+        for event in events:
+            if not event:
+                raise ValueError("audit events cannot be empty")
+            previous = hashlib.sha256(f"{previous}:{event}".encode()).hexdigest()
+            hashes.append(previous)
+        return cls(workflow_id, tenant, events, tuple(hashes), previous)
 
     def verify(self) -> bool:
         return self == self.create(self.workflow_id, self.tenant, self.events)

@@ -67,4 +67,5 @@ def test_cross_cloud_governed_mock_release(cloud, region):
 
     report = simulate_delivery(ApprovalCheck(plan, json.dumps(request), approval), admission=admit)
     assert report.deployment_status == "healthy"
+    assert report.image_ref.endswith(f"@sha256:{report.commit_digest}")
     assert report.security_passed and report.ci_passed and report.supply_chain_passed

@@ -1,8 +1,11 @@
 from dataclasses import replace
 
+import pytest
+
 from deployments.rollouts.mock import MockCanaryRollout
 from observability.otel.mock import MockTelemetry
 from security.audit.evidence import EvidenceBundle
+from orchestration.state.recovery import MockRecoveryStore, RecoverySnapshot
 
 
 def test_canary_failure_rolls_back_and_correlates_incident():
@@ -25,4 +28,21 @@ def test_canary_failure_rolls_back_and_correlates_incident():
 def test_evidence_snapshot_detects_tampering():
     bundle = EvidenceBundle.create("w1", "team-a", ("plan.approved", "canary.failed", "rollback.completed"))
     assert bundle.verify()
+    assert len(bundle.event_hashes) == 3
+    assert bundle.digest == bundle.event_hashes[-1]
     assert not replace(bundle, events=("plan.approved", "rollback.completed")).verify()
+    assert not replace(bundle, event_hashes=tuple(reversed(bundle.event_hashes))).verify()
+
+
+def test_dr_snapshot_survives_store_restart_and_is_tenant_scoped(tmp_path):
+    path = tmp_path / "workflow-recovery.json"
+    snapshot = RecoverySnapshot("team-a", "w1", "a" * 64, "sha-old", "rolled_back")
+    MockRecoveryStore(path).backup(snapshot)
+    recovered = MockRecoveryStore(path)
+    assert recovered.restore(tenant="team-a") == snapshot
+    with pytest.raises(PermissionError):
+        recovered.restore(tenant="team-b")
+
+    path.write_text(path.read_text().replace("sha-old", "sha-new"))
+    with pytest.raises(ValueError, match="checksum"):
+        recovered.restore(tenant="team-a")

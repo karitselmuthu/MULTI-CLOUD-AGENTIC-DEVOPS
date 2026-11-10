@@ -40,6 +40,14 @@ class MockTacos:
         self._spent: dict[Workspace, int] = {}
         self._drift: set[Workspace] = set()
 
+    def get_run(self, workflow_id: str) -> TacosRun:
+        with self._lock:
+            return self._runs[workflow_id]
+
+    def spent(self, workspace: Workspace) -> int:
+        with self._lock:
+            return self._spent.get(workspace, 0)
+
     def plan(self, run: TacosRun) -> TacosRun:
         if run.workspace.environment != "sandbox" or run.status != "planned":
             raise PermissionError("only sandbox plans are supported")

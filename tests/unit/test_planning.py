@@ -40,3 +40,12 @@ def test_unsupported_module_fails_closed():
         build_graph(MockModelGateway()).invoke({
             "value": WorkflowInput("workflow-123", json.dumps(request))
         })
+
+
+def test_azure_unsupported_capability_has_explicit_error():
+    request = json.loads((ROOT / "evaluations/golden_requests/azure-dev.json").read_text())
+    request["infrastructure"]["module"] = "aws-only-module"
+    with pytest.raises(ValueError, match="unsupported module for cloud"):
+        build_graph(MockModelGateway()).invoke({
+            "value": WorkflowInput("workflow-azure", json.dumps(request))
+        })
