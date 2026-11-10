@@ -4,7 +4,7 @@ Date: 2026-11-10 (Asia/Kolkata)
 
 ## Automated checks
 
-- `python3 -m compileall -q project/apps project/tests`: passed.
+- `python3 -m compileall -q apps tests`: passed after moving the checkout to the workspace root.
 - `.venv/bin/pytest -q tests`: 6 passed. One upstream `StarletteDeprecationWarning` about `httpx` in the test client.
 - Tested versions: FastAPI 0.162.2, Pydantic 2.14.3, SQLAlchemy 2.0.57, psycopg 3.3.8.
 
