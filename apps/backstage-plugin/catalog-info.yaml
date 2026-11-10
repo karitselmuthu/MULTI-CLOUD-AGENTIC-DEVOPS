@@ -1,0 +1,10 @@
+# Catalog descriptor: https://backstage.io/docs/features/software-catalog/descriptor-format/
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: multicloud-agentic-devops
+  description: Local prototype control plane for governed delivery requests
+spec:
+  type: service
+  lifecycle: experimental
+  owner: platform-engineering

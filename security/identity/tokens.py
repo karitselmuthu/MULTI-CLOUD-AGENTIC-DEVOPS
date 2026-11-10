@@ -35,18 +35,31 @@ class ApprovalClaims(BaseModel):
     expires_at: datetime
 
 
+class WorkloadClaims(BaseModel):
+    """Tenant and action scoped mock workload identity; not a cloud credential."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["workload"] = "workload"
+    tenant: str = Field(min_length=1)
+    role: Literal["tacos-executor"]
+    workflow_id: str = Field(min_length=1)
+    plan_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expires_at: datetime
+
+
 class TokenVerifier:
     def __init__(self, secret: bytes):
         if len(secret) < 32:
             raise ValueError("signing secret must be at least 32 bytes")
         self._secret = secret
 
-    def sign(self, claims: AgentClaims | ApprovalClaims) -> str:
+    def sign(self, claims: AgentClaims | ApprovalClaims | WorkloadClaims) -> str:
         payload = claims.model_dump_json().encode()
         signature = hmac.new(self._secret, payload, hashlib.sha256).digest()
         return f"{_encode(payload)}.{_encode(signature)}"
 
-    def verify(self, token: str, claims_type: type[AgentClaims] | type[ApprovalClaims]):
+    def verify(self, token: str, claims_type: type[AgentClaims] | type[ApprovalClaims] | type[WorkloadClaims]):
         try:
             payload_part, signature_part = token.split(".")
             payload = _decode(payload_part)

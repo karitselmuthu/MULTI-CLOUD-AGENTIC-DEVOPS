@@ -1,0 +1,35 @@
+# Template format: https://backstage.io/docs/features/software-templates/writing-templates/
+# This local prototype logs inputs only; no deployment action is registered.
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: multicloud-sandbox-request-mock
+  title: Multi-cloud sandbox request (mock)
+  description: Capture a governed delivery request for local evaluation
+spec:
+  owner: platform-engineering
+  type: service
+  parameters:
+    - title: Sandbox target
+      required: [application, cloud, region, requester]
+      properties:
+        application:
+          title: Application name
+          type: string
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+        cloud:
+          title: Cloud
+          type: string
+          enum: [aws, azure]
+        region:
+          title: Region
+          type: string
+        requester:
+          title: Requester
+          type: string
+  steps:
+    - id: record
+      name: Record mock request
+      action: debug:log
+      input:
+        message: 'Mock sandbox request for ${{ parameters.application }} on ${{ parameters.cloud }} in ${{ parameters.region }}'
