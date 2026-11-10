@@ -6,6 +6,8 @@ Production-oriented Agentic DevOps platform for governed infrastructure and appl
 
 Week 1 intake foundation: validated requests, persistent workflow records and audit metadata. All workflows remain `received`; no cloud mutation is implemented.
 
+The repository follows the proposed domain layout. Directories without implemented workstreams contain `.gitkeep` placeholders so Git retains the full structure. The [cloud capability matrix](cloud/capability_matrix.yaml) records planned AWS and Azure mappings; it does not imply active integrations.
+
 ## Local setup
 
 Requires Python 3.11+, Docker and a local PostgreSQL service.

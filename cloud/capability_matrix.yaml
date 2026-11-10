@@ -1,0 +1,26 @@
+# Planned platform mappings from the project roadmap; integrations are not active.
+capabilities:
+  landing_zone:
+    aws: Control Tower / AFT
+    azure: Azure Landing Zones
+  kubernetes:
+    aws: EKS
+    azure: AKS
+  registry:
+    aws: ECR
+    azure: ACR
+  identity:
+    aws: IAM / STS / Pod Identity
+    azure: Entra ID / Workload Identity
+  secrets:
+    aws: Secrets Manager / Vault
+    azure: Key Vault / Vault
+  monitoring:
+    aws: CloudWatch
+    azure: Azure Monitor
+  immutable_evidence:
+    aws: S3 Object Lock
+    azure: Immutable Blob Storage
+  sandbox:
+    aws: Dedicated account
+    azure: Dedicated subscription
