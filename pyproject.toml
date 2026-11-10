@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling>=1.25,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "enterprise-multicloud-agentic-devops"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.162.2",
+  "pydantic==2.14.3",
+  "sqlalchemy==2.0.57",
+  "psycopg[binary]==3.3.8",
+  "uvicorn==0.54.0",
+]
+
+[project.optional-dependencies]
+test = ["httpx==0.28.1", "pytest==9.2.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["apps"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
