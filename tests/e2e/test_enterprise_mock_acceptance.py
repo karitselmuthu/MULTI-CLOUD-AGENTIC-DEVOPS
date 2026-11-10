@@ -13,7 +13,7 @@ from orchestration.state.contracts import ApprovalCheck, WorkflowInput
 from orchestration.temporal.activities.delivery import simulate_delivery
 from security.identity.broker import MockWorkloadBroker
 from security.identity.tokens import ApprovalClaims, TokenVerifier
-from security.supply_chain.provenance import MockAttestor
+from security.supply_chain.provenance import MockAttestor, mock_sbom
 
 
 @pytest.mark.parametrize("cloud,region", [("aws", "us-east-1"), ("azure", "eastus")])
@@ -51,7 +51,7 @@ def test_cross_cloud_governed_mock_release(cloud, region):
     assert tacos.apply(workflow_id, approval, workload).status == "applied"
 
     attestor = MockAttestor(b"local-test-attestation-key-with-32-bytes")
-    materials = b"mock-bill-of-materials"
+    materials = mock_sbom(["generated-fastapi-source"])
 
     def admit(commit_digest: str) -> bool:
         provenance = attestor.attest(

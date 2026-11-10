@@ -53,6 +53,11 @@ def test_admission_rejection_prevents_deployment():
         simulate_delivery(check(), admission=lambda _: False)
 
 
+def test_mock_vulnerable_dependency_blocks_delivery():
+    with pytest.raises(ValueError, match="blocking security"):
+        simulate_delivery(check(), content="VULNERABLE_IMAGE=old\n")
+
+
 @pytest.mark.parametrize("marker,tool", [
     ("VULNERABLE_IMAGE=old", "trivy-mock"),
     ("PUBLIC_CIDR=0.0.0.0/0", "checkov-mock"),

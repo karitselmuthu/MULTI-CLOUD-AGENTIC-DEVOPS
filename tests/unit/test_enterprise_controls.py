@@ -17,6 +17,9 @@ def test_short_lived_workload_token_and_scope():
     claims = verifier.verify(token, WorkloadClaims)
     assert claims.tenant == "team-a"
     assert claims.role == "tacos-executor"
+    verifier.revoke(token)
+    with pytest.raises(PermissionError):
+        verifier.verify(token, WorkloadClaims)
     with pytest.raises(ValueError, match="five minutes"):
         broker.issue(tenant="team-a", workflow_id="w1", plan_digest="a" * 64,
                      lifetime=timedelta(hours=1))

@@ -7,6 +7,7 @@ HCP workspace locking: https://developer.hashicorp.com/terraform/cloud-docs/work
 from dataclasses import dataclass
 import re
 from threading import RLock
+from typing import Callable
 
 from gateways.mcp.gateway import ToolContext, approval_matches
 from security.identity.tokens import ApprovalClaims, TokenVerifier, WorkloadClaims
@@ -32,8 +33,12 @@ class TacosRun:
 
 
 class MockTacos:
-    def __init__(self, verifier: TokenVerifier):
+    def __init__(self, verifier: TokenVerifier,
+                 apply_hook: Callable[[TacosRun], None] | None = None,
+                 compensate_hook: Callable[[TacosRun], None] | None = None):
         self._verifier = verifier
+        self._apply_hook = apply_hook
+        self._compensate_hook = compensate_hook
         self._lock = RLock()
         self._runs: dict[str, TacosRun] = {}
         self._workspace_locks: set[Workspace] = set()
@@ -84,6 +89,13 @@ class MockTacos:
                 raise PermissionError("tenant budget exceeded")
             self._workspace_locks.add(run.workspace)
             try:
+                if self._apply_hook is not None:
+                    try:
+                        self._apply_hook(run)
+                    except Exception:
+                        if self._compensate_hook is not None:
+                            self._compensate_hook(run)
+                        raise
                 applied = TacosRun(**{**run.__dict__, "status": "applied"})
                 self._runs[workflow_id] = applied
                 self._spent[run.workspace] = self._spent.get(run.workspace, 0) + run.estimated_cost

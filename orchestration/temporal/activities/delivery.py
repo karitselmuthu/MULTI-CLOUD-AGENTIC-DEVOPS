@@ -10,7 +10,7 @@ from integrations.github.mock import MockRepositoryAdapter
 from orchestration.state.contracts import ApprovalCheck
 from orchestration.state.delivery import DeliveryReport
 from security.supply_chain.scanning import blocking, mock_scan
-from security.supply_chain.provenance import MockAttestor
+from security.supply_chain.provenance import MockAttestor, mock_sbom
 
 
 def simulate_delivery(value: ApprovalCheck, *, content: str | None = None, healthy: bool = True,
@@ -53,7 +53,7 @@ def simulate_delivery(value: ApprovalCheck, *, content: str | None = None, healt
 @activity.defn
 async def deliver_mock_plan(value: ApprovalCheck) -> DeliveryReport:
     attestor = MockAttestor(os.environ.get("AGENT_SIGNING_KEY", "").encode())
-    materials = b"mock-generated-source;no-real-sbom"
+    materials = mock_sbom(["generated-fastapi-source"])
 
     def admit(commit_digest: str) -> bool:
         provenance = attestor.attest(

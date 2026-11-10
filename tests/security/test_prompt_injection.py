@@ -42,3 +42,16 @@ def test_model_cannot_add_tool_call_to_structured_plan():
         build_graph(InjectedGateway()).invoke({
             "value": WorkflowInput("w1", request_with_untrusted_repository_text())
         })
+
+
+def test_model_cannot_invent_resource_in_structured_plan():
+    class HallucinatingGateway:
+        def propose(self, request):
+            return {"cloud": request.cloud.value, "environment": request.environment.value,
+                    "application": request.application.name, "action": "simulate",
+                    "resource": "aws_iam_user.unreviewed"}
+
+    with pytest.raises(ValidationError):
+        build_graph(HallucinatingGateway()).invoke({
+            "value": WorkflowInput("w1", request_with_untrusted_repository_text())
+        })

@@ -53,6 +53,11 @@ class TokenVerifier:
         if len(secret) < 32:
             raise ValueError("signing secret must be at least 32 bytes")
         self._secret = secret
+        self._revoked: set[str] = set()
+
+    def revoke(self, token: str) -> None:
+        """Revoke within this verifier instance; not a distributed revocation list."""
+        self._revoked.add(hashlib.sha256(token.encode()).hexdigest())
 
     def sign(self, claims: AgentClaims | ApprovalClaims | WorkloadClaims) -> str:
         payload = claims.model_dump_json().encode()
@@ -61,6 +66,8 @@ class TokenVerifier:
 
     def verify(self, token: str, claims_type: type[AgentClaims] | type[ApprovalClaims] | type[WorkloadClaims]):
         try:
+            if hashlib.sha256(token.encode()).hexdigest() in self._revoked:
+                raise ValueError("token revoked")
             payload_part, signature_part = token.split(".")
             payload = _decode(payload_part)
             signature = _decode(signature_part)

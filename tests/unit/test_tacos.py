@@ -72,3 +72,24 @@ def test_plan_idempotency_rejects_changed_request():
     tacos.plan(run(workspace))
     with pytest.raises(ValueError, match="reused"):
         tacos.plan(run(workspace, cost=4))
+
+
+def test_partial_mock_provisioning_compensates_without_spend():
+    verifier, approval, workload = tokens()
+    resources: set[str] = set()
+
+    def fail_after_network(_):
+        resources.add("network")
+        raise RuntimeError("partial provisioning")
+
+    def compensate(_):
+        resources.discard("network")
+
+    tacos = MockTacos(verifier, apply_hook=fail_after_network, compensate_hook=compensate)
+    workspace = Workspace("team-a", "aws", "sandbox", 10)
+    tacos.plan(run(workspace))
+    with pytest.raises(RuntimeError, match="partial provisioning"):
+        tacos.apply("w1", approval, workload)
+    assert resources == set()
+    assert tacos.get_run("w1").status == "planned"
+    assert tacos.spent(workspace) == 0
