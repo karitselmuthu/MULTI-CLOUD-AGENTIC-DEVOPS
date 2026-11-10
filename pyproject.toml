@@ -13,13 +13,14 @@ dependencies = [
   "psycopg[binary]==3.3.8",
   "uvicorn==0.54.0",
   "temporalio==1.35.0",
+  "langgraph==1.2.20",
 ]
 
 [project.optional-dependencies]
 test = ["httpx==0.28.1", "pytest==9.2.0", "pytest-asyncio==1.4.1.post1"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["apps", "orchestration"]
+packages = ["apps", "orchestration", "agents", "gateways"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

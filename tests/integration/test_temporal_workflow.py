@@ -13,6 +13,15 @@ from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mo
 from orchestration.temporal.workflows.request import RequestWorkflow
 
 
+def request_json(cloud, environment):
+    return json.dumps({
+        "cloud": cloud, "environment": environment, "requester": "engineer@example.com",
+        "application": {"name": "sample-api", "repository": "https://github.com/example/sample-api"},
+        "infrastructure": {"region": "us-east-1", "module": "sandbox-api"},
+        "approval": {"required": True},
+    })
+
+
 async def wait_for_status(handle, expected):
     for _ in range(100):
         if await handle.query(RequestWorkflow.get_status) == expected:
@@ -26,7 +35,7 @@ async def test_approval_digest_and_worker_restart():
     workflow_id = str(uuid4())
     value = WorkflowInput(
         workflow_id=workflow_id,
-        request_json=json.dumps({"cloud": "aws", "environment": "sandbox", "application": {"name": "sample-api"}}),
+        request_json=request_json("aws", "sandbox"),
     )
     queue = str(uuid4())
     async with await WorkflowEnvironment.start_local() as env:
@@ -54,7 +63,7 @@ async def test_approval_timeout_without_execution():
     workflow_id = str(uuid4())
     value = WorkflowInput(
         workflow_id=workflow_id,
-        request_json=json.dumps({"cloud": "azure", "environment": "dev", "application": {"name": "sample-api"}}),
+        request_json=request_json("azure", "dev"),
     )
     queue = str(uuid4())
     async with await WorkflowEnvironment.start_time_skipping() as env:
@@ -87,7 +96,7 @@ async def test_activity_retry_and_cancellation():
             workflow_id = str(uuid4())
             value = WorkflowInput(
                 workflow_id,
-                json.dumps({"cloud": "aws", "environment": "dev", "application": {"name": "sample-api"}}),
+                request_json("aws", "dev"),
             )
             handle = await env.client.start_workflow(RequestWorkflow.run, value, id=workflow_id, task_queue=queue)
             await wait_for_status(handle, "awaiting_approval")

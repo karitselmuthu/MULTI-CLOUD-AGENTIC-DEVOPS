@@ -22,7 +22,10 @@ async def test_dispatch_retries_after_start_before_database_commit(tmp_path):
     sessions = sessionmaker(engine, expire_on_commit=False)
     workflow_id = str(uuid4())
     request_json = json.dumps({
-        "cloud": "aws", "environment": "sandbox", "application": {"name": "sample-api"}
+        "cloud": "aws", "environment": "sandbox", "requester": "engineer@example.com",
+        "application": {"name": "sample-api", "repository": "https://github.com/example/sample-api"},
+        "infrastructure": {"region": "us-east-1", "module": "sandbox-api"},
+        "approval": {"required": True},
     })
     with sessions() as session:
         session.add(WorkflowRecord(

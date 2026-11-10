@@ -1,0 +1,1 @@
+{"cloud":"aws","environment":"sandbox","requester":"engineer@example.com","application":{"name":"sample-api","repository":"https://github.com/example/sample-api"},"infrastructure":{"region":"us-east-1","module":"sandbox-api"},"approval":{"required":true}}
