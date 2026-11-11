@@ -22,6 +22,8 @@ jobs:
           package-manager-cache: false
       - run: npm ci
         working-directory: apps/dashboard
+      - run: npm test
+        working-directory: apps/dashboard
       - run: npm run build
         working-directory: apps/dashboard
 

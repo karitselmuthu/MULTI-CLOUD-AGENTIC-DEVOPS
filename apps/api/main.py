@@ -139,7 +139,9 @@ def create_app(session_factory=None, temporal_client=None) -> FastAPI:
         request: RequestCreate,
         idempotency_key: str = Header(min_length=1, max_length=128),
     ) -> WorkflowResponse:
-        payload = request.model_dump_json()
+        # Preserve the canonical bytes of pre-portal requests when new fields are absent.
+        optional_exclusions = {name for name in ("cost_center", "description") if getattr(request, name) is None}
+        payload = request.model_dump_json(exclude=optional_exclusions)
         digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         with sessions() as session:
             existing = session.scalar(select(WorkflowRecord).where(WorkflowRecord.idempotency_key == idempotency_key))

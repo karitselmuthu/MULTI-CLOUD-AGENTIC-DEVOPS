@@ -2,6 +2,8 @@
 
 The React dashboard connects to the FastAPI control plane through Vite's local proxy. It shows a request form, current plan digest and source references, approval state, audit activity, and the simulated deployment report. The resource section displays a labeled simulation; it is not a cloud inventory.
 
+The request form requires a cost center in the browser, checks field values before submission, and accepts up to 2,000 characters of plain-text details. It keeps an unfinished draft in session storage and reuses its idempotency key while retrying an uncertain submission. The API accepts older requests without the new fields for compatibility. See the [FE-01–FE-13 acceptance matrix](../../docs/roadmap/frontend-acceptance.md) for verified local behavior and remaining connected-system gates.
+
 Start PostgreSQL, the API, Temporal and the worker as described in the repository README. In the API terminal, configure a local requester and a fresh token:
 
 ```sh

@@ -51,6 +51,8 @@ class RequestCreate(BaseModel):
     cloud: Cloud
     environment: Environment
     requester: str = Field(min_length=3, max_length=128)
+    cost_center: str | None = Field(default=None, min_length=2, max_length=64)
+    description: str | None = Field(default=None, max_length=2000)
     application: Application
     infrastructure: Infrastructure
     approval: ApprovalIntent
@@ -60,6 +62,13 @@ class RequestCreate(BaseModel):
     def requester_not_blank(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("requester must not be blank")
+        return value
+
+    @field_validator("description")
+    @classmethod
+    def description_is_plain_text(cls, value: str | None) -> str | None:
+        if value is not None and ("<" in value or ">" in value):
+            raise ValueError("description must be plain text without HTML")
         return value
 
 

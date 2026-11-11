@@ -1,7 +1,7 @@
 :root{font-family:'DM Sans',sans-serif;color:#1a2840;background:#f5f7fb;font-synthesis:none}
 *{box-sizing:border-box}
 body{margin:0}
-button,input,select{font:inherit}
+button,input,select,textarea{font:inherit}
 button{cursor:pointer}
 h1,h2,h3,p{margin-top:0}
 h1,h2,h3{font-family:Manrope,sans-serif;letter-spacing:-.04em}
@@ -74,12 +74,17 @@ h1,h2,h3{font-family:Manrope,sans-serif;letter-spacing:-.04em}
 .form-panel{max-width:900px}
 .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px}
 .form-grid label,.connect-card label{display:flex;flex-direction:column;gap:8px;color:#40536f;font-size:.81rem;font-weight:700}
-input,select{width:100%;border:1px solid #dbe4ee;background:#fff;border-radius:8px;padding:10px 12px;color:#203350;outline:none}
-input:focus,select:focus{border-color:#48b8a7;box-shadow:0 0 0 3px #48b8a721}
+.wide-field{grid-column:1/-1}
+input,select,textarea{width:100%;border:1px solid #dbe4ee;background:#fff;border-radius:8px;padding:10px 12px;color:#203350;outline:none}
+input:focus,select:focus,textarea:focus{border-color:#48b8a7;box-shadow:0 0 0 3px #48b8a721}
+[aria-invalid=true]{border-color:#b83f3f}
+.field-error{color:#a53d3d;font-size:.76rem;font-weight:600}
+textarea{resize:vertical;min-height:100px}
 .form-actions{border-top:1px solid #edf0f4;margin-top:28px;padding-top:21px}
 .primary{border:0;background:#1c746e;color:#fff;border-radius:9px;padding:12px 18px;font-weight:800}
 .primary:hover{background:#155c57}
 .primary:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible,a:focus-visible{outline:3px solid #23696d;outline-offset:3px}
 .error-banner,.error{color:#a53d3d;background:#fff0f0;padding:12px 14px;border-radius:8px;font-size:.85rem}
 .error-banner{display:flex;justify-content:space-between;margin-bottom:20px}
 .error-banner button{border:0;background:transparent;color:inherit;font-weight:700}

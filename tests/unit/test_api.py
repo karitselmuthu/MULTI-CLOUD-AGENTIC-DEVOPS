@@ -1,3 +1,4 @@
+from hashlib import sha256
 from uuid import UUID
 
 import pytest
@@ -6,7 +7,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from apps.api.database import AuditEvent, Base
+from apps.api.database import AuditEvent, Base, WorkflowRecord
 from apps.api.main import create_app
 
 
@@ -59,6 +60,31 @@ def test_invalid_input_and_missing_idempotency_key(client):
     bad = request_body()
     bad["approval"] = {"required": False}
     assert http.post("/requests", json=bad, headers={"Idempotency-Key": "bad"}).status_code == 422
+
+
+def test_plain_text_description_bounds_are_enforced(client):
+    http, _ = client
+    for description in ("<script>alert(1)</script>", "x" * 2001):
+        payload = request_body()
+        payload["cost_center"] = "CC-123"
+        payload["description"] = description
+        assert http.post("/requests", json=payload, headers={"Idempotency-Key": "description"}).status_code == 422
+    payload["description"] = "Private network for sandbox API"
+    assert http.post("/requests", json=payload, headers={"Idempotency-Key": "description"}).status_code == 202
+
+
+def test_legacy_request_digest_stays_compatible(client):
+    http, sessions = client
+    response = http.post("/requests", json=request_body(), headers={"Idempotency-Key": "legacy"})
+    assert response.status_code == 202
+    legacy_json = ('{"cloud":"aws","environment":"sandbox","requester":"engineer@example.com",'
+                   '"application":{"name":"sample-api","repository":"https://github.com/example/sample-api"},'
+                   '"infrastructure":{"region":"us-east-1","module":"sandbox-api"},'
+                   '"approval":{"required":true,"change_record":null}}')
+    with sessions() as session:
+        row = session.get(WorkflowRecord, response.json()["id"])
+        assert row.request_json == legacy_json
+        assert row.request_digest == sha256(legacy_json.encode()).hexdigest()
 
 
 def test_duplicate_request_is_idempotent_and_conflict_is_rejected(client):
