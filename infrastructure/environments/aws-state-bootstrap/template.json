@@ -1,0 +1,66 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Private, versioned S3 state bucket for the multi-cloud AWS sandbox",
+  "Parameters": {
+    "Owner": { "Type": "String", "MinLength": 1 },
+    "CostCenter": { "Type": "String", "MinLength": 1 }
+  },
+  "Resources": {
+    "StateBucket": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "multicloud-agentic-devops-tfstate-${AWS::AccountId}-${AWS::Region}"
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            { "ServerSideEncryptionByDefault": { "SSEAlgorithm": "AES256" } }
+          ]
+        },
+        "VersioningConfiguration": { "Status": "Enabled" },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [ { "ObjectOwnership": "BucketOwnerEnforced" } ]
+        },
+        "Tags": [
+          { "Key": "owner", "Value": { "Ref": "Owner" } },
+          { "Key": "cost_center", "Value": { "Ref": "CostCenter" } },
+          { "Key": "environment", "Value": "sandbox" }
+        ]
+      }
+    },
+    "StateBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "StateBucket" },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "DenyInsecureTransport",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                { "Fn::GetAtt": [ "StateBucket", "Arn" ] },
+                { "Fn::Sub": "${StateBucket.Arn}/*" }
+              ],
+              "Condition": { "Bool": { "aws:SecureTransport": "false" } }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "BucketName": { "Value": { "Ref": "StateBucket" } },
+    "BucketRegion": { "Value": { "Ref": "AWS::Region" } }
+  }
+}
