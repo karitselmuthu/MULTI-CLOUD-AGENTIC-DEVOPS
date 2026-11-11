@@ -1,7 +1,6 @@
 import asyncio
 import os
 import shutil
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -14,15 +13,16 @@ from temporalio.worker import Worker
 
 from apps.api.database import AuditEvent, Base
 from apps.api.main import create_app
+from apps.cli.local_approval import issue_from_detail
 from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mock_plan, verify_mock_approval
 from orchestration.temporal.activities.delivery import deliver_mock_plan
 from orchestration.temporal.dispatch import TASK_QUEUE, dispatch_once
 from orchestration.temporal.workflows.request import RequestWorkflow
-from security.identity.tokens import ApprovalClaims, TokenVerifier
 
 
 @pytest.mark.asyncio
-async def test_api_request_to_signed_mock_approval(tmp_path, monkeypatch):
+@pytest.mark.parametrize("cloud,region", [("aws", "us-east-1"), ("azure", "eastus")])
+async def test_api_request_to_signed_mock_approval(tmp_path, monkeypatch, cloud, region):
     binary = os.getenv("OPA_BIN") or shutil.which("opa")
     if not binary or not Path(binary).is_file():
         pytest.skip("OPA CLI unavailable; set OPA_BIN")
@@ -34,12 +34,12 @@ async def test_api_request_to_signed_mock_approval(tmp_path, monkeypatch):
     Base.metadata.create_all(engine)
     sessions = sessionmaker(engine, expire_on_commit=False)
     request = {
-        "cloud": "aws", "environment": "sandbox", "requester": "engineer@example.com",
+        "cloud": cloud, "environment": "sandbox", "requester": "engineer@example.com",
         "application": {"name": "sample-api", "repository": "https://github.com/example/sample-api"},
-        "infrastructure": {"region": "us-east-1", "module": "sandbox-api"},
+        "infrastructure": {"region": region, "module": "sandbox-api"},
         "approval": {"required": True, "change_record": "CR-123"},
     }
-    async with await WorkflowEnvironment.start_local() as env:
+    async with await WorkflowEnvironment.start_local(dev_server_existing_path=shutil.which("temporal")) as env:
         async with Worker(
             env.client, task_queue=TASK_QUEUE, workflows=[RequestWorkflow],
             activities=[prepare_mock_plan, verify_mock_approval, execute_mock_plan, deliver_mock_plan],
@@ -61,12 +61,12 @@ async def test_api_request_to_signed_mock_approval(tmp_path, monkeypatch):
                     f"/workflows/{workflow_id}/approve",
                     json={"signed_approval": "forged"},
                 )).status_code == 403
-                token = TokenVerifier(secret.encode()).sign(ApprovalClaims(
-                    workflow_id=workflow_id, plan_digest=state["plan_digest"],
-                    environment="sandbox", requester="engineer@example.com",
-                    change_record="CR-123", approver="reviewer@example.com",
-                    expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
-                ))
+                dashboard_before = await http.get(
+                    f"/dashboard/workflows/{workflow_id}",
+                    headers={"Authorization": "Bearer local-dashboard-test-token"},
+                )
+                assert dashboard_before.status_code == 200
+                token = issue_from_detail(dashboard_before.json(), "reviewer@example.com", secret)
                 approved = await http.post(
                     f"/workflows/{workflow_id}/approve", json={"signed_approval": token}
                 )
