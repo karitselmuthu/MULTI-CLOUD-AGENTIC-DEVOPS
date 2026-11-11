@@ -6,6 +6,8 @@ Production-oriented Agentic DevOps platform for governed infrastructure and appl
 
 Stage A local foundation: validated requests, persistent workflow records, durable Temporal mock workflows, LangGraph planning, signed approval binding, and an OPA-gated mock tool gateway. Stage B adds locally validated AWS and Azure Terraform sandbox modules, a prototype plan policy, and a mock delivery report. Stages C and D add local mock contracts for TACOS, workload identity, provenance, observability, resilience, ITSM, tenant policy, and a Backstage template. No cloud or external system mutation is implemented. [The roadmap status table](docs/roadmap/implementation-status.md) separates local evidence from live acceptance gates.
 
+The new [knowledge, model gateway and dashboard slice](docs/architecture/knowledge-gateway-dashboard.md) adds Qdrant-filtered local reference retrieval, provider-neutral routing, separate artifact/cache adapters, optional Langfuse and OpenTelemetry observations, retrieval evaluation, and a [React dashboard](apps/dashboard/README.md). These remain local development integrations; the connected enterprise gates are documented in that architecture note.
+
 The [M1–M6 acceptance contract](docs/roadmap/milestone-acceptance.md) maps each requested criterion to executable evidence and names the live gates that remain open.
 The [test category matrix](docs/governance/test-matrix.md) tracks unit, integration, cloud, negative, recovery, security, supply chain, evaluation, performance, and disaster recovery coverage.
 

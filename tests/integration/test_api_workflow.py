@@ -28,6 +28,8 @@ async def test_api_request_to_signed_mock_approval(tmp_path, monkeypatch):
         pytest.skip("OPA CLI unavailable; set OPA_BIN")
     secret = "local-test-signing-key-with-32-plus-bytes"
     monkeypatch.setenv("AGENT_SIGNING_KEY", secret)
+    monkeypatch.setenv("LOCAL_DASHBOARD_TOKEN", "local-dashboard-test-token")
+    monkeypatch.setenv("LOCAL_DASHBOARD_REQUESTER", "engineer@example.com")
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'api-workflow.db'}")
     Base.metadata.create_all(engine)
     sessions = sessionmaker(engine, expire_on_commit=False)
@@ -79,6 +81,13 @@ async def test_api_request_to_signed_mock_approval(tmp_path, monkeypatch):
                 assert report.json()["image_ref"].endswith(
                     f"@sha256:{report.json()['commit_digest']}"
                 )
+                dashboard = await http.get(
+                    f"/dashboard/workflows/{workflow_id}",
+                    headers={"Authorization": "Bearer local-dashboard-test-token"},
+                )
+                assert dashboard.status_code == 200
+                assert dashboard.json()["plan"]["digest"] == state["plan_digest"]
+                assert dashboard.json()["report"]["deployment_status"] == "healthy"
                 with sessions() as session:
                     assert [event.event_type for event in session.scalars(select(AuditEvent)).all()] == [
                         "request.received", "workflow.dispatched", "approval.signaled"

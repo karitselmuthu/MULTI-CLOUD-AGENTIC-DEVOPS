@@ -16,6 +16,7 @@ class MockPlan:
     environment: str
     application: str
     digest: str
+    sources: tuple[str, ...] = ()
 
 
 @dataclass

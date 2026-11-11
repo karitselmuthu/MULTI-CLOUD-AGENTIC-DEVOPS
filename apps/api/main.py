@@ -5,7 +5,9 @@ Sources: https://fastapi.tiangolo.com/tutorial/body/
 """
 
 import hashlib
+import hmac
 import os
+import asyncio
 from datetime import timezone
 from uuid import UUID, uuid4
 
@@ -19,12 +21,21 @@ from .database import AuditEvent, WorkflowRecord, make_session_factory, utc_now
 from gateways.mcp.gateway import ToolContext, approval_matches
 from orchestration.state.delivery import DeliveryReport
 from orchestration.temporal.workflows.request import RequestWorkflow
+from observability.otel.correlation import workflow_span
 from security.identity.tokens import ApprovalClaims, TokenVerifier
 
 
 def create_app(session_factory=None, temporal_client=None) -> FastAPI:
     sessions = session_factory or make_session_factory()
     app = FastAPI(title="Enterprise Multi-Cloud Agentic DevOps", version="0.1.0")
+
+    def dashboard_requester(token: str | None) -> str:
+        expected = os.environ.get("LOCAL_DASHBOARD_TOKEN", "")
+        requester = os.environ.get("LOCAL_DASHBOARD_REQUESTER", "")
+        if (not expected or not requester or not token or
+                not hmac.compare_digest(token, f"Bearer {expected}")):
+            raise HTTPException(status_code=403, detail="dashboard access denied")
+        return requester
 
     async def get_temporal():
         if temporal_client is not None:
@@ -55,6 +66,73 @@ def create_app(session_factory=None, temporal_client=None) -> FastAPI:
         except Exception as exc:
             raise HTTPException(status_code=503, detail="database unavailable") from exc
         return HealthResponse(status="ok")
+
+    @app.get("/dashboard/workflows")
+    async def dashboard_workflows(authorization: str | None = Header(default=None)) -> list[WorkflowResponse]:
+        requester = dashboard_requester(authorization)
+        with sessions() as session:
+            rows = session.scalars(select(WorkflowRecord).order_by(WorkflowRecord.created_at.desc())).all()
+            visible = [row for row in rows
+                       if RequestCreate.model_validate_json(row.request_json).requester == requester][:200]
+            result = [response_for(row) for row in visible]
+        queued = [(index, row) for index, row in enumerate(visible) if row.status == "queued"]
+        if queued and (temporal_client is not None or os.environ.get("TEMPORAL_ADDRESS")):
+            client = await get_temporal()
+            semaphore = asyncio.Semaphore(10)
+
+            async def current(index: int, row: WorkflowRecord):
+                async with semaphore:
+                    handle = client.get_workflow_handle(row.id)
+                    status = await handle.query(RequestWorkflow.get_status)
+                    plan = await handle.query(RequestWorkflow.get_plan)
+                    result[index] = response_for(row, status=status, plan_digest=plan.digest if plan else None)
+
+            try:
+                await asyncio.gather(*(current(index, row) for index, row in queued))
+            except Exception as exc:
+                raise HTTPException(status_code=503, detail="workflow state unavailable") from exc
+        return result
+
+    @app.get("/dashboard/workflows/{workflow_id}")
+    async def dashboard_workflow(workflow_id: UUID, authorization: str | None = Header(default=None)) -> dict:
+        requester = dashboard_requester(authorization)
+        with sessions() as session:
+            row = session.get(WorkflowRecord, str(workflow_id))
+            if row is None:
+                raise HTTPException(status_code=404, detail="workflow not found")
+            request = RequestCreate.model_validate_json(row.request_json)
+            if request.requester != requester:
+                raise HTTPException(status_code=404, detail="workflow not found")
+            audit_rows = session.scalars(select(AuditEvent).where(
+                AuditEvent.workflow_id == str(workflow_id)).order_by(AuditEvent.id)).all()
+            events = [{"type": event.event_type, "at": event.created_at.isoformat()}
+                      for event in audit_rows]
+            summary = response_for(row).model_dump(mode="json")
+            queued = row.status == "queued"
+        plan = report = None
+        if queued:
+            with workflow_span(str(workflow_id), "dashboard.workflow_detail"):
+                client = await get_temporal()
+                handle = client.get_workflow_handle(str(workflow_id))
+                try:
+                    status = await handle.query(RequestWorkflow.get_status)
+                    plan = await handle.query(RequestWorkflow.get_plan)
+                    report = await handle.query(RequestWorkflow.get_report)
+                except Exception as exc:
+                    raise HTTPException(status_code=503, detail="workflow state unavailable") from exc
+            summary["status"] = status
+            summary["plan_digest"] = plan.digest if plan else None
+        return {"workflow": summary, "request": request.model_dump(mode="json"),
+                "events": events, "plan": vars(plan) if plan else None,
+                "report": vars(report) if report else None}
+
+    @app.post("/dashboard/requests", response_model=WorkflowResponse, status_code=202)
+    def dashboard_submit(request: RequestCreate, idempotency_key: str = Header(min_length=1, max_length=128),
+                         authorization: str | None = Header(default=None)) -> WorkflowResponse:
+        requester = dashboard_requester(authorization)
+        if request.requester != requester:
+            raise HTTPException(status_code=403, detail="requester mismatch")
+        return submit_request(request, idempotency_key)
 
     @app.post("/requests", response_model=WorkflowResponse, status_code=202)
     def submit_request(

@@ -6,7 +6,7 @@ This table measures **local code and mock acceptance**, not production readiness
 | --- | --- | --- | --- |
 | 1 | Foundation | FastAPI, PostgreSQL intake, audit rows, contracts | Authenticated enterprise access |
 | 2 | Temporal | Durable mock workflow, retries, cancellation, recovery tests | Multi-worker and production Temporal validation |
-| 3 | Agents | LangGraph planner, structured output, golden cases | Real model gateway and broader model evaluation |
+| 3 | Agents | LangGraph planner, structured output, golden cases, Qdrant local retrieval and mock model router | Real providers, authenticated knowledge publishing and broader model evaluation |
 | 4 | Security | HMAC tokens, OPA mock tool gate, approval binding | Enterprise issuer, network MCP service |
 | 5 | AWS infrastructure | VPC, private subnet, ECR module validates | AWS account, actual plan, policy, apply |
 | 6 | Azure infrastructure | Resource group, VNet, subnet, ACR module validates | Azure subscription, actual plan, policy, apply |
@@ -17,11 +17,11 @@ This table measures **local code and mock acceptance**, not production readiness
 | 11 | TACOS | In-memory run, locking, budget and drift checks | HCP Terraform/Spacelift/env0 adapter and remote state |
 | 12 | Advanced identity | Five-minute tenant-scoped mock workload token | Cloud workload identity, secret broker and tenant auth |
 | 13 | Supply chain | HMAC mock provenance gate before mock rollout | Syft SBOM, cosign, provenance and cluster admission |
-| 14 | Agent evaluation | Golden and adversarial mock tests | Measured plan/tool accuracy and model regression gate |
-| 15 | Observability | In-memory trace/incident contract | OTel export, Langfuse, dashboards and alerts |
+| 14 | Agent evaluation | Golden and adversarial mock tests; local retrieval recall, precision and reciprocal rank | Representative corpus, semantic embeddings and model regression gate |
+| 15 | Observability | In-memory trace/incident contract; optional OTel span and Langfuse generation wrapper | Exporter, cross-process context, connected Langfuse, dashboards and alerts |
 | 16 | Resilience | Mock canary rollback, audit hash chain, and file restore | Live failure recovery, DR and blast-radius exercise |
 | 17 | ITSM | In-memory change, plan hash and CAB evidence | ServiceNow/Jira callback and authenticated approval |
-| 18 | Developer portal | Backstage catalog and request template examples | Running portal, authenticated request and status UI |
+| 18 | Developer portal | Backstage examples and a locally runnable token-gated React dashboard | Enterprise SSO, tenant-scoped request/status UI and live inventory |
 | 19 | Multi-tenant operations | Namespace/budget policy registry and TACOS tenant checks | Real namespaces, quotas, policy bundles and Day-2 controls |
 | 20 | Release validation | AWS/Azure local mock acceptance tests | Live cross-cloud, performance, security and DR sign-off |
 
