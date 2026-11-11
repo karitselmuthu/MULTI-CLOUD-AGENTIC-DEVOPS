@@ -1,14 +1,8 @@
 """Retrieval-only local knowledge agent with source references."""
 
-from dataclasses import dataclass
-
-from agents.knowledge.retrieval import KnowledgeHit, KnowledgeIndex
-
-
-@dataclass(frozen=True)
-class KnowledgeAnswer:
-    text: str
-    sources: tuple[KnowledgeHit, ...]
+from agents.knowledge.contracts import KnowledgeAnswer
+from agents.knowledge.retrieval import KnowledgeIndex
+from knowledge.retrieval.citations import citation
 
 
 class EnterpriseKnowledgeAgent:
@@ -20,5 +14,5 @@ class EnterpriseKnowledgeAgent:
         if not hits:
             return KnowledgeAnswer("No approved source was found for this request.", ())
         return KnowledgeAnswer("\n\n".join(
-            f"{hit.title}: {hit.excerpt} [{hit.source}@{hit.revision}]" for hit in hits
+            f"{hit.title}: {hit.excerpt} [{citation(hit.source, hit.revision)}]" for hit in hits
         ), tuple(hits))

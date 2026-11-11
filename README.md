@@ -8,6 +8,8 @@ Stage A local foundation: validated requests, persistent workflow records, durab
 
 The new [knowledge, model gateway and dashboard slice](docs/architecture/knowledge-gateway-dashboard.md) adds Qdrant-filtered local reference retrieval, provider-neutral routing, separate artifact/cache adapters, optional Langfuse and OpenTelemetry observations, retrieval evaluation, and a [React dashboard](apps/dashboard/README.md). These remain local development integrations; the connected enterprise gates are documented in that architecture note.
 
+The [repository integration review](docs/architecture/repository-integration-review.md) maps the newer domain directories to code and names the Backstage, pgvector and distributed-system gates that remain open.
+
 The [M1–M6 acceptance contract](docs/roadmap/milestone-acceptance.md) maps each requested criterion to executable evidence and names the live gates that remain open.
 The [test category matrix](docs/governance/test-matrix.md) tracks unit, integration, cloud, negative, recovery, security, supply chain, evaluation, performance, and disaster recovery coverage.
 

@@ -14,6 +14,7 @@ from typing import Literal
 from apps.api.contracts import Cloud, Environment, RequestCreate
 from agents.shared.tools import MockModuleCatalog, ModuleCatalog
 from agents.knowledge.retrieval import KnowledgeHit, KnowledgeIndex
+from knowledge.retrieval.citations import citation
 from gateways.llm.model import ModelGateway
 from orchestration.state.contracts import MockPlan, WorkflowInput
 
@@ -71,7 +72,7 @@ def build_graph(gateway: ModelGateway, catalog: ModuleCatalog | None = None,
         request = state["request"]
         query = f"{request.cloud.value} {request.infrastructure.module} {request.infrastructure.region} security runbook"
         hits = knowledge.search(query, tenant=tenant, roles=roles)
-        return {"sources": tuple(f"{hit.source}@{hit.revision}" for hit in hits),
+        return {"sources": tuple(citation(hit.source, hit.revision) for hit in hits),
                 "knowledge_hits": tuple(hits)}
 
     def finalize(state: PlanningState) -> dict:

@@ -33,7 +33,7 @@ cache = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["apps", "orchestration", "agents", "gateways", "security", "integrations", "deployments", "observability", "evaluations"]
+packages = ["apps", "orchestration", "agents", "gateways", "security", "integrations", "deployments", "observability", "evaluations", "knowledge", "data"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

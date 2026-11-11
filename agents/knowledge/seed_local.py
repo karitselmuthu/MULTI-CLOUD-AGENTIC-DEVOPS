@@ -4,7 +4,8 @@ import os
 import subprocess
 from pathlib import Path
 
-from agents.knowledge.retrieval import ApprovedDocument, create_index
+from agents.knowledge.retrieval import create_index
+from knowledge.ingestion import ApprovedSource, RepositoryIngestor
 
 
 FIXTURES = (
@@ -25,11 +26,10 @@ def main() -> None:
     root = Path(__file__).resolve().parents[2]
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     index = create_index(url, key, create=True)
+    ingestor = RepositoryIngestor(root, index, FIXTURES)
     for relative in FIXTURES:
-        path = root / relative
-        index.approve(ApprovedDocument(
-            source=f"repo://{relative}", title=path.stem.replace("-", " ").title(),
-            content=path.read_text()[:20000], tenant=tenant,
+        ingestor.ingest(ApprovedSource(
+            path=relative, tenant=tenant,
             roles=("planner", "engineer"), revision=revision,
             approved_by="local-fixture-only",
         ))

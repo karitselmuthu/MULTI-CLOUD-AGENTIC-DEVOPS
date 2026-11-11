@@ -5,3 +5,5 @@
 Run with `uv run --locked --extra test python -m pytest -q tests/unit/test_planning.py tests/security/test_prompt_injection.py tests/security/test_gateway.py` and `opa test security/opa -v`.
 
 `retrieval_quality.py` measures recall, precision and reciprocal rank for approved reference searches. `tests/unit/test_retrieval_evaluation.py` is a deterministic local gate. The deployment, security and workflow reliability checks live in separate `evaluations/` modules and are tested independently. A connected embedding model and representative enterprise corpus are still needed before setting production RAG thresholds.
+
+The newer `rag/`, `model_routing/` and `context_quality/` packages hold retrieval fixtures, route-policy checks and citation/injection checks. `tests/unit/test_evaluation_packages.py` runs these local fixtures; fallback and tenant quota behavior is covered by `tests/unit/test_model_quota_fallback.py`.

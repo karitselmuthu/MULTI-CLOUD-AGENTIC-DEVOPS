@@ -5,13 +5,13 @@ The implementation keeps four kinds of data separate:
 | Data | Owner | Current adapter |
 | --- | --- | --- |
 | Workflow request, status and audit metadata | PostgreSQL | SQLAlchemy records |
-| Immutable plan and evidence artifacts | Object store | MinIO/S3-compatible adapter; local file adapter for tests |
-| Approved reference text and search vectors | Qdrant | Local in-memory tests; optional authenticated service |
-| Disposable context cache | Redis | Optional tenant-prefixed TTL adapter |
+| Immutable plan and evidence artifacts | Object store | `data/object_storage/` MinIO/S3-compatible adapter; local file adapter for tests |
+| Approved reference text and search vectors | Qdrant | `knowledge/` pipeline with local in-memory tests and optional authenticated service |
+| Disposable context cache | Redis | `data/redis/` optional tenant-prefixed TTL adapter |
 
 No long-lived agent memory is persisted in this slice. The optional Redis cache is disposable and cannot hold workflow approvals or durable state. If memory is added later, it needs its own tenant-scoped contract and retention policy separate from Qdrant documents and PostgreSQL workflows.
 
-The local knowledge agent returns excerpts and `source@revision` references. The planner can retrieve tenant- and role-filtered references, pass them as context through the model gateway, and include source revisions in the plan digest. A changed source revision therefore requires a new plan approval. The seed script indexes five **local fixtures** covering Terraform modules, cloud standards, security policy and a recovery runbook; `approved_by=local-fixture-only` is not a verified enterprise approval. Only an authorized document publishing service should call `KnowledgeIndex.approve` in a connected deployment.
+The local knowledge agent returns excerpts and `source@revision` references. The `knowledge/` pipeline separates allowlisted ingestion, Markdown chunking, embeddings, tenant/role access filters, Qdrant retrieval, reranking and citations. The planner passes retrieved excerpts through the model gateway and includes source revisions in the plan digest. A changed source revision therefore requires a new plan approval. The seed script indexes five **local fixtures** covering Terraform modules, cloud standards, security policy and a recovery runbook; `approved_by=local-fixture-only` is not a verified enterprise approval. Only an authorized document publishing service should call `KnowledgeIndex.approve` in a connected deployment.
 
 The offline vectorizer is a deterministic 128-dimensional token hash. It makes repeatable local tests possible, but it is not a semantic embedding model and has no production retrieval-quality claim. The retrieval evaluation records recall, precision and reciprocal rank separately from existing planner, security and workflow-reliability tests. The Qdrant query applies tenant and role filters before ranking; remote Qdrant requires an API key and HTTPS except on loopback. The Qdrant service in Docker Compose binds only to loopback and uses a development key.
 

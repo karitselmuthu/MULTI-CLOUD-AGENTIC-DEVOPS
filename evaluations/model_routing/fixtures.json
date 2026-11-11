@@ -1,0 +1,4 @@
+[
+  {"name": "EU reasoning", "reasoning": 3, "latency_ms": 1000, "cost_cap": 3.0, "residency": "eu"},
+  {"name": "Local budget", "reasoning": 1, "latency_ms": 500, "cost_cap": 0.5, "residency": "local"}
+]

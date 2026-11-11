@@ -1,0 +1,5 @@
+[
+  {"query": "AWS sandbox VPC private subnet module", "source": "repo://infrastructure/modules/aws/README.md"},
+  {"query": "Azure VNet private registry module", "source": "repo://infrastructure/modules/azure/README.md"},
+  {"query": "recovery worker restart", "source": "repo://docs/runbooks/local-workflow-recovery.md"}
+]

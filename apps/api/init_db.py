@@ -1,11 +1,12 @@
-"""Local bootstrap only; production migrations follow in a later slice."""
+"""Apply versioned PostgreSQL metadata migrations."""
 
-from .database import Base, make_session_factory
+from data.postgres import migrate
+from .database import make_session_factory
 
 
 def main() -> None:
     sessions = make_session_factory()
-    Base.metadata.create_all(sessions.kw["bind"])
+    migrate(sessions.kw["bind"])
 
 
 if __name__ == "__main__":
