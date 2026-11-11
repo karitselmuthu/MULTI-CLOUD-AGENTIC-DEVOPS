@@ -59,10 +59,13 @@ h1,h2,h3{font-family:Manrope,sans-serif;letter-spacing:-.04em}
 .sources h3{font-size:.78rem;letter-spacing:0;margin-bottom:8px}
 .sources p{font-size:.77rem;color:#4b6d91;word-break:break-all;margin:5px 0}
 .approval-box{margin-top:22px;padding:16px;background:#f7f9fc;border-radius:10px}
+.approval-box .approval-context{margin:0 0 12px;color:#40536f;font-size:.8rem;line-height:1.5}
+.approval-box>button{margin-bottom:14px}
 .approval-box label{display:block;font-size:.8rem;font-weight:700;margin-bottom:8px}
 .approval-box div{display:flex;gap:8px}
 .approval-box input{min-width:0;flex:1}
 .approval-box button{border:0;border-radius:7px;background:#23696d;color:#fff;padding:9px 11px;font-size:.77rem;font-weight:700}
+.approval-box button:disabled{opacity:.55;cursor:not-allowed}
 .approval-box small{display:block;margin-top:8px;color:#8b9bae}
 .timeline{display:grid;gap:0}
 .timeline>div{display:flex;gap:12px;min-height:50px}

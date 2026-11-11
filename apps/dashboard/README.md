@@ -30,10 +30,14 @@ npm run dev
 
 Open `http://127.0.0.1:5173` and enter the `LOCAL_DASHBOARD_TOKEN` value from `.env`. The requester's email in the form must equal `LOCAL_DASHBOARD_REQUESTER`. The token is kept in React state for this browser tab. The dashboard API is disabled when either environment variable is absent. This shared local token is a development control, not enterprise identity or tenant authorization. A real portal must use authenticated users and tenant-scoped permissions before it is exposed outside an isolated workstation.
 
-Submit an AWS request with region `us-east-1` or an Azure request with region `eastus`; both use approved module `sandbox-api`. When a plan reaches **Awaiting approval**, review its digest and run this in a separate terminal with the same `.env` loaded:
+Submit an AWS request with region `us-east-1` or an Azure request with region `eastus`; both use approved module `sandbox-api`. When a plan reaches **Awaiting approval**, review its digest, then select **Show local mock token** in the plan panel. The token appears in the approval field; select **Submit approval** to continue. No approver email is needed for this local simulation.
+
+If you prefer the terminal, run this in a separate terminal with the same `.env` loaded:
 
 ```sh
-uv run --locked python -m apps.cli.local_approval --workflow-id <workflow-uuid> --approver reviewer@example.com
+uv run --locked python -m apps.cli.local_approval --workflow-id <workflow-uuid>
 ```
 
-Copy the printed signed token into the dashboard's approval field. The approver must differ from the requester. The token expires after 10 minutes and is bound to the workflow, exact plan digest, environment, requester, and change record. This CLI is an isolated local mock issuer: it trusts the typed approver name and does not provide real approver authentication. The dashboard does not mint approvals. Install the OPA CLI (`brew install opa` on macOS) before approval execution; a missing OPA binary denies the mock tool call. See [ADR 0004](../../docs/adr/0004-signed-approval-and-policy-gateway.md).
+Copy the printed signed token into the dashboard's approval field. The simulated approver is `local-mock-reviewer`, distinct from the requester. The token expires after 10 minutes and is bound to the workflow, exact plan digest, environment, requester, and change record. The button and CLI are isolated local mock issuers, not authenticated approval flows. Do not enable them in shared or production deployments. Install the OPA CLI (`brew install opa` on macOS) before approval execution; a missing OPA binary denies the mock tool call. See [ADR 0004](../../docs/adr/0004-signed-approval-and-policy-gateway.md).
+
+If the button or CLI reports **403**, restart the API after sourcing `.env`, then sign into the dashboard again with the token from that same file. A token from an earlier API start will not work. Run `set -a; source .env; set +a` in the worker terminal and restart it too, so both processes use the same signing key.

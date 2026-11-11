@@ -13,11 +13,11 @@ from temporalio.worker import Worker
 
 from apps.api.database import AuditEvent, Base
 from apps.api.main import create_app
-from apps.cli.local_approval import issue_from_detail
 from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mock_plan, verify_mock_approval
 from orchestration.temporal.activities.delivery import deliver_mock_plan
 from orchestration.temporal.dispatch import TASK_QUEUE, dispatch_once
 from orchestration.temporal.workflows.request import RequestWorkflow
+from security.identity.tokens import ApprovalClaims, TokenVerifier
 
 
 @pytest.mark.asyncio
@@ -66,7 +66,27 @@ async def test_api_request_to_signed_mock_approval(tmp_path, monkeypatch, cloud,
                     headers={"Authorization": "Bearer local-dashboard-test-token"},
                 )
                 assert dashboard_before.status_code == 200
-                token = issue_from_detail(dashboard_before.json(), "reviewer@example.com", secret)
+                mock_url = f"/dashboard/workflows/{workflow_id}/local-mock-approval"
+                assert (await http.post(mock_url, headers={
+                    "Authorization": "Bearer local-dashboard-test-token"
+                })).status_code == 403
+                monkeypatch.setenv("LOCAL_MOCK_APPROVAL_ENABLED", "1")
+                assert (await http.post(mock_url)).status_code == 403
+                monkeypatch.setenv("LOCAL_DASHBOARD_REQUESTER", "other-team@example.com")
+                assert (await http.post(mock_url, headers={
+                    "Authorization": "Bearer local-dashboard-test-token"
+                })).status_code == 404
+                monkeypatch.setenv("LOCAL_DASHBOARD_REQUESTER", "engineer@example.com")
+                issued = await http.post(mock_url, headers={
+                    "Authorization": "Bearer local-dashboard-test-token"
+                })
+                assert issued.status_code == 200
+                assert issued.headers["cache-control"] == "no-store"
+                token = issued.json()["signed_approval"]
+                claims = TokenVerifier(secret.encode()).verify(token, ApprovalClaims)
+                assert claims.workflow_id == workflow_id
+                assert claims.plan_digest == state["plan_digest"]
+                assert claims.approver == "local-mock-reviewer"
                 approved = await http.post(
                     f"/workflows/{workflow_id}/approve", json={"signed_approval": token}
                 )
@@ -74,6 +94,9 @@ async def test_api_request_to_signed_mock_approval(tmp_path, monkeypatch, cloud,
                 handle = env.client.get_workflow_handle(workflow_id)
                 assert (await handle.result()).startswith("simulated:")
                 assert (await http.get(f"/workflows/{workflow_id}")).json()["status"] == "completed"
+                assert (await http.post(mock_url, headers={
+                    "Authorization": "Bearer local-dashboard-test-token"
+                })).status_code == 409
                 report = await http.get(f"/workflows/{workflow_id}/report")
                 assert report.status_code == 200
                 assert report.json()["deployment_status"] == "healthy"

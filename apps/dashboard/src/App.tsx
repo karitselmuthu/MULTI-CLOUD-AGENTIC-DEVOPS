@@ -98,7 +98,11 @@ export default function App() {
   async function refresh() {
     const workflows = await api<Workflow[]>('/dashboard/workflows', token)
     setRows(workflows)
-    if (selected) setDetail(await api<Detail>(`/dashboard/workflows/${selected}`, token))
+    if (selected) {
+      const current = await api<Detail>(`/dashboard/workflows/${selected}`, token)
+      setDetail(current)
+      if (current.workflow.status !== 'awaiting_approval') setApproval('')
+    }
   }
 
   useEffect(() => {
@@ -130,7 +134,7 @@ export default function App() {
   }
 
   async function choose(id: string) {
-    setSelected(id); setError('')
+    setSelected(id); setError(''); setApproval('')
     try { setDetail(await api<Detail>(`/dashboard/workflows/${id}`, token)) }
     catch (e) { showError(e) }
   }
@@ -169,6 +173,18 @@ export default function App() {
       })
       setApproval('')
       await refresh()
+    } catch (e) { showError(e) }
+    finally { setBusy(false) }
+  }
+
+  async function generateLocalApproval() {
+    if (!selected) return
+    setBusy(true); setError('')
+    try {
+      const result = await api<{ signed_approval: string }>(
+        `/dashboard/workflows/${selected}/local-mock-approval`, token, { method: 'POST' },
+      )
+      setApproval(result.signed_approval)
     } catch (e) { showError(e) }
     finally { setBusy(false) }
   }
@@ -233,7 +249,13 @@ export default function App() {
                 <div className="details"><div><span>Request ID</span><code>{detail.workflow.id}</code></div><div><span>Cloud / region</span><strong>{detail.request.cloud.toUpperCase()} / {detail.request.infrastructure.region}</strong></div><div><span>Module</span><strong>{detail.request.infrastructure.module}</strong></div><div><span>Plan digest</span><code title={detail.plan?.digest || ''}>{short(detail.plan?.digest || null)}</code></div><div><span>Approval</span><strong>{detail.workflow.status === 'awaiting_approval' ? 'Waiting for signed approval' : statusLabel(detail.workflow.status)}</strong></div></div>
                 {detail.plan && <p className="note">Terraform diff, cost estimate and risk score are not supplied by the local mock planner.</p>}
                 {detail.plan?.sources.length ? <div className="sources"><h3>Approved references</h3>{detail.plan.sources.map(source => <p key={source}>{source}</p>)}</div> : <p className="note">No approved knowledge references were attached to this plan.</p>}
-                {detail.workflow.status === 'awaiting_approval' && <div className="approval-box"><label htmlFor="approval">Signed approval token</label><div><input id="approval" type="password" value={approval} onChange={e => setApproval(e.target.value)} placeholder="Paste a plan-bound token" /><button disabled={!approval || busy} onClick={() => void approve()}>Submit approval</button></div><small>Approval issuance is separate from this local dashboard.</small></div>}
+                {detail.workflow.status === 'awaiting_approval' && <div className="approval-box">
+                  <p className="approval-context">Local mock only · This token simulates a separate reviewer. It is not an enterprise approval.</p>
+                  <button type="button" disabled={busy} onClick={() => void generateLocalApproval()}>Show local mock token</button>
+                  <label htmlFor="approval">Signed approval token</label>
+                  <div><input id="approval" type="text" value={approval} onChange={e => setApproval(e.target.value)} placeholder="Generate a local token or paste one" autoComplete="off" spellCheck={false} /><button type="button" disabled={!approval || busy} onClick={() => void approve()}>Submit approval</button></div>
+                  <small>Review the plan digest above before submitting. A generated token expires after 10 minutes.</small>
+                </div>}
               </section>
               <section className="panel"><div className="panel-heading"><div><p className="eyebrow">04 / Trace</p><h2>Agent activity</h2></div></div><div className="timeline">{detail.events.map((event, i) => <div key={i}><span className="timeline-dot" /><div><strong>{event.type.replaceAll('.', ' · ')}</strong><small>{formatDate(event.at)}</small></div></div>)}<div><span className="timeline-dot muted-dot" /><div><strong>Current phase: {statusLabel(detail.workflow.status)}</strong><small>Checks for updates every 2 seconds</small></div></div></div></section>
               <section className="panel"><div className="panel-heading"><div><p className="eyebrow">05 / Operations</p><h2>Deployment & resources</h2></div></div>{detail.report ? <><div className="details"><div><span>Deployment</span><strong>{detail.report.deployment_status}</strong></div><div><span>Revision</span><code>{short(detail.report.deployment_revision)}</code></div><div><span>Image</span><code title={detail.report.image_ref}>{short(detail.report.image_ref)}</code></div><div><span>CI / security / supply chain</span><strong>{[detail.report.ci_passed, detail.report.security_passed, detail.report.supply_chain_passed].every(Boolean) ? 'Passed' : 'Needs attention'}</strong></div></div><p className="note">Simulated resource: {detail.request.infrastructure.module} in {detail.request.infrastructure.region}. Live cloud inventory is not connected.</p><a className="report-link" href={detail.report.pull_request} target="_blank" rel="noreferrer">View pull request ↗</a></> : <p className="empty">Deployment evidence and resource inventory appear after the mock workflow completes.</p>}</section>

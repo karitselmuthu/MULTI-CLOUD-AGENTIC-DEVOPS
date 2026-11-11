@@ -11,12 +11,13 @@ import asyncio
 from datetime import timezone
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request, Response
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from temporalio.client import Client
 
 from .contracts import ApprovalSubmission, HealthResponse, RequestCreate, WorkflowResponse
+from apps.cli.local_approval import issue_from_detail
 from .database import AuditEvent, WorkflowRecord, make_session_factory, utc_now
 from gateways.mcp.gateway import ToolContext, approval_matches
 from orchestration.state.delivery import DeliveryReport
@@ -133,6 +134,31 @@ def create_app(session_factory=None, temporal_client=None) -> FastAPI:
         if request.requester != requester:
             raise HTTPException(status_code=403, detail="requester mismatch")
         return submit_request(request, idempotency_key)
+
+    @app.post("/dashboard/workflows/{workflow_id}/local-mock-approval")
+    async def local_mock_approval(
+        workflow_id: UUID, request: Request, response: Response,
+        authorization: str | None = Header(default=None),
+    ) -> dict[str, str]:
+        # An explicit workstation-only simulation. Never treat this as approver identity.
+        if (os.environ.get("LOCAL_MOCK_APPROVAL_ENABLED") != "1" or request.client is None
+                or request.client.host not in {"127.0.0.1", "::1"}):
+            raise HTTPException(status_code=403, detail="local mock approval is disabled")
+        detail = await dashboard_workflow(workflow_id, authorization)
+        try:
+            mock_reviewer = "local-mock-reviewer"
+            if detail["request"]["requester"] == mock_reviewer:
+                mock_reviewer = "local-mock-reviewer-2"
+            signed = issue_from_detail(
+                detail, mock_reviewer, os.environ.get("AGENT_SIGNING_KEY", "")
+            )
+        except ValueError as exc:
+            if "awaiting approval" in str(exc):
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            raise HTTPException(status_code=503, detail="local mock approval unavailable") from exc
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
+        return {"signed_approval": signed}
 
     @app.post("/requests", response_model=WorkflowResponse, status_code=202)
     def submit_request(

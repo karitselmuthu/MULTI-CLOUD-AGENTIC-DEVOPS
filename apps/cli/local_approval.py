@@ -59,7 +59,7 @@ def issue_from_detail(detail: dict, approver: str, signing_key: str) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Issue a local, plan-bound mock approval token")
     parser.add_argument("--workflow-id", required=True)
-    parser.add_argument("--approver", required=True)
+    parser.add_argument("--approver", default="local-mock-reviewer")
     parser.add_argument("--api-url", default="http://127.0.0.1:8000")
     args = parser.parse_args()
     if os.getenv("LOCAL_MOCK_APPROVAL_ENABLED") != "1":
