@@ -6,8 +6,9 @@ Source: https://docs.temporal.io/develop/python/workers
 import asyncio
 import os
 
-from temporalio.client import Client
 from temporalio.worker import Worker
+
+from apps.api.runtime_config import connect_temporal, validate_runtime
 
 from orchestration.temporal.activities.mock import execute_mock_plan, prepare_mock_plan, verify_mock_approval
 from orchestration.temporal.activities.delivery import deliver_mock_plan
@@ -18,7 +19,9 @@ from orchestration.temporal.dispatch import TASK_QUEUE, dispatch_once
 
 
 async def main() -> None:
-    client = await Client.connect(os.getenv("TEMPORAL_ADDRESS", "localhost:7233"))
+    validate_runtime()
+    os.environ.setdefault("TEMPORAL_ADDRESS", "localhost:7233")
+    client = await connect_temporal()
     sessions = make_session_factory()
     worker = Worker(
         client,
