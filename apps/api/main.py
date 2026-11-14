@@ -9,12 +9,15 @@ import hmac
 import os
 import asyncio
 from datetime import timezone
+from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI, Header, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
-from temporalio.client import Client
+
+from .runtime_config import connect_temporal, require_sandbox_token, validate_runtime
 
 from .contracts import ApprovalSubmission, HealthResponse, RequestCreate, WorkflowResponse
 from apps.cli.local_approval import issue_from_detail
@@ -27,8 +30,10 @@ from security.identity.tokens import ApprovalClaims, TokenVerifier
 
 
 def create_app(session_factory=None, temporal_client=None) -> FastAPI:
+    validate_runtime()
     sessions = session_factory or make_session_factory()
-    app = FastAPI(title="Enterprise Multi-Cloud Agentic DevOps", version="0.1.0")
+    app = FastAPI(title="Enterprise Multi-Cloud Agentic DevOps", version="0.1.0",
+                  dependencies=[Depends(require_sandbox_token)])
 
     def dashboard_requester(token: str | None) -> str:
         expected = os.environ.get("LOCAL_DASHBOARD_TOKEN", "")
@@ -45,7 +50,7 @@ def create_app(session_factory=None, temporal_client=None) -> FastAPI:
         if not address:
             raise HTTPException(status_code=503, detail="Temporal is not configured")
         try:
-            return await Client.connect(address)
+            return await connect_temporal()
         except Exception as exc:
             raise HTTPException(status_code=503, detail="Temporal unavailable") from exc
 
@@ -266,6 +271,9 @@ def create_app(session_factory=None, temporal_client=None) -> FastAPI:
             raise HTTPException(status_code=409, detail="delivery has not completed")
         return report
 
+    dashboard_dist = Path(__file__).parents[1] / "dashboard" / "dist"
+    if dashboard_dist.is_dir():
+        app.mount("/", StaticFiles(directory=dashboard_dist, html=True), name="dashboard")
     return app
 
 

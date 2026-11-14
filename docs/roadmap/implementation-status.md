@@ -2,6 +2,8 @@
 
 This table measures **local code and mock acceptance**, not production readiness. The user selected local mocks for cloud accounts and enterprise systems. No AWS, Azure, TACOS, ITSM, Backstage, or Kubernetes test instance is connected.
 
+An internal AWS ECS sandbox deployment package is now prepared under `infrastructure/environments/aws-platform-sandbox`. Its Terraform validates locally, but no image has been built on this machine or pushed to ECR, no AWS plan has been reviewed or applied, and the external network, database, Temporal Cloud, TLS, identity, and approval prerequisites remain open. The services default to zero tasks until a database migration succeeds.
+
 | Week | Roadmap item | Local evidence | Remaining live gate |
 | --- | --- | --- | --- |
 | 1 | Foundation | FastAPI, PostgreSQL intake, versioned metadata migrations, audit rows, contracts | Authenticated enterprise access and existing-schema upgrade validation |
