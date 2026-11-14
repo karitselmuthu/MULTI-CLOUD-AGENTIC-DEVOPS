@@ -12,7 +12,17 @@ COPY --from=uv /uv /usr/local/bin/uv
 WORKDIR /app
 COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --locked --no-dev --no-install-project
-COPY agents apps data deployments evaluations gateways integrations knowledge observability orchestration security ./
+COPY agents ./agents
+COPY apps ./apps
+COPY data ./data
+COPY deployments ./deployments
+COPY evaluations ./evaluations
+COPY gateways ./gateways
+COPY integrations ./integrations
+COPY knowledge ./knowledge
+COPY observability ./observability
+COPY orchestration ./orchestration
+COPY security ./security
 RUN uv sync --locked --no-dev
 
 FROM python:3.12-slim
